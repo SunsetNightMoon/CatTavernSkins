@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useSiteStore } from '../../store/siteStore'
 import { clearSiteTitleCache } from '../../hooks/usePageTitle'
+import { fetchWithAuth } from '../../utils/api'
 import { Form, Input, Switch, Button, message, Card, Spin, Modal, Upload, Space, Slider } from 'antd'
 import { SendOutlined, EditOutlined, CloseOutlined, UploadOutlined, PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
@@ -33,7 +34,7 @@ function GlobalAutoApplySwitch({ checked, onChange }: { checked: boolean; onChan
 /* ============================================================
    注册设置卡片
    ============================================================ */
-function RegistrationSettings({ token, autoApply, onAutoApplyChange }: { token: string; autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -41,8 +42,7 @@ function RegistrationSettings({ token, autoApply, onAutoApplyChange }: { token: 
   const loadSettings = async () => {
     setLoadingSettings(true)
     try {
-      const res = await fetch('/api/admin/settings', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetchWithAuth('/api/admin/settings', {
       })
       if (!res.ok) throw new Error('读取失败')
       const data = await res.json()
@@ -63,12 +63,9 @@ function RegistrationSettings({ token, autoApply, onAutoApplyChange }: { token: 
   const handleSave = async (values: any) => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/settings', {
+      const res = await fetchWithAuth('/api/admin/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
       if (!res.ok) {
@@ -134,7 +131,7 @@ function RegistrationSettings({ token, autoApply, onAutoApplyChange }: { token: 
 /* ============================================================
    站点设置卡片
    ============================================================ */
-function SiteSettings({ token, autoApply, onAutoApplyChange }: { token: string; autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -143,8 +140,7 @@ function SiteSettings({ token, autoApply, onAutoApplyChange }: { token: string; 
   const loadSettings = async () => {
     setLoadingSettings(true)
     try {
-      const res = await fetch('/api/admin/settings', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetchWithAuth('/api/admin/settings', {
       })
       if (!res.ok) throw new Error('读取失败')
       const data = await res.json()
@@ -160,6 +156,7 @@ function SiteSettings({ token, autoApply, onAutoApplyChange }: { token: string; 
       form.setFieldsValue({
         site_title: String(data.SITE_TITLE || 'Skin2'),
         site_description: String(data.SITE_DESCRIPTION || 'Minecraft Skin Server - 自定义你的游戏形象'),
+        site_favicon: String(data.SITE_FAVICON || '/favicon.svg'),
         homepage_title_text: String(data.HOMEPAGE_TITLE_TEXT || '欢迎来到'),
         homepage_text: String(data.HOMEPAGE_TEXT || 'WELCOME TO SKIN2!'),
         homepage_button_text: String(data.HOMEPAGE_BUTTON_TEXT || '进入个人中心'),
@@ -180,12 +177,9 @@ function SiteSettings({ token, autoApply, onAutoApplyChange }: { token: string; 
         ...values,
         homepage_buttons: JSON.stringify(extraButtons),
       }
-      const res = await fetch('/api/admin/settings', {
+      const res = await fetchWithAuth('/api/admin/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       if (!res.ok) {
@@ -243,6 +237,13 @@ function SiteSettings({ token, autoApply, onAutoApplyChange }: { token: string; 
           rules={[{ required: true, message: '请输入站点描述' }]}
         >
           <TextArea rows={3} placeholder="Minecraft Skin Server - 自定义你的游戏形象" />
+        </Form.Item>
+
+        <Form.Item
+          label="网站图标（favicon）"
+          name="site_favicon"
+        >
+          <Input placeholder="/favicon.svg" />
         </Form.Item>
 
         <Form.Item
@@ -338,7 +339,7 @@ function SiteSettings({ token, autoApply, onAutoApplyChange }: { token: string; 
 /* ============================================================
    主题设置卡片（背景图 + 透明度）
    ============================================================ */
-function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string; autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -357,8 +358,7 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
   const loadSettings = async () => {
     setLoadingSettings(true)
     try {
-      const res = await fetch('/api/admin/settings', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetchWithAuth('/api/admin/settings', {
       })
       if (!res.ok) throw new Error('读取失败')
       const data = await res.json()
@@ -406,12 +406,9 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
         light_bg_overlay_opacity: values.light_bg_overlay_opacity || 30,
         dark_bg_overlay_opacity: values.dark_bg_overlay_opacity || 30,
       }
-      const res = await fetch('/api/admin/settings', {
+      const res = await fetchWithAuth('/api/admin/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       if (!res.ok) {
@@ -433,9 +430,8 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
     const formData = new FormData();
     formData.append('bgImage', file);
     try {
-      const res = await fetch('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-bg', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -453,9 +449,8 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
     const formData = new FormData();
     formData.append('bgImage', file);
     try {
-      const res = await fetch('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-bg', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -473,9 +468,8 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
     const formData = new FormData();
     formData.append('bgImage', file);
     try {
-      const res = await fetch('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-bg', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -493,9 +487,8 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
     const formData = new FormData();
     formData.append('bgImage', file);
     try {
-      const res = await fetch('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-bg', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -761,7 +754,7 @@ function ThemeSettings({ token, autoApply, onAutoApplyChange }: { token: string;
 /* ============================================================
    邮箱设置卡片
    ============================================================ */
-function EmailSettings({ token, autoApply, onAutoApplyChange }: { token: string; autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -778,8 +771,7 @@ function EmailSettings({ token, autoApply, onAutoApplyChange }: { token: string;
   const loadSettings = async () => {
     setLoadingSettings(true)
     try {
-      const res = await fetch('/api/admin/settings', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetchWithAuth('/api/admin/settings', {
       })
       if (!res.ok) throw new Error('读取失败')
       const data = await res.json()
@@ -811,12 +803,9 @@ function EmailSettings({ token, autoApply, onAutoApplyChange }: { token: string;
         delete payload.smtp_pass
       }
 
-      const res = await fetch('/api/admin/settings', {
+      const res = await fetchWithAuth('/api/admin/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       if (!res.ok) {
@@ -840,9 +829,8 @@ function EmailSettings({ token, autoApply, onAutoApplyChange }: { token: string;
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch('/api/admin/test-smtp', {
+      const res = await fetchWithAuth('/api/admin/test-smtp', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
       })
       const data = await res.json()
       setTestResult({ success: data.success, message: data.message || data.error || '未知错误' })
@@ -863,8 +851,7 @@ function EmailSettings({ token, autoApply, onAutoApplyChange }: { token: string;
   const loadTemplate = async () => {
     setLoadingTemplate(true)
     try {
-      const res = await fetch('/api/admin/email-template', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetchWithAuth('/api/admin/email-template', {
       })
       const data = await res.json()
       setTemplateSubject(data.subject || '')
@@ -894,12 +881,9 @@ function EmailSettings({ token, autoApply, onAutoApplyChange }: { token: string;
     }
     setSavingTemplate(true)
     try {
-      const res = await fetch('/api/admin/email-template', {
+      const res = await fetchWithAuth('/api/admin/email-template', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject: templateSubject, html: templateHtml }),
       })
       if (!res.ok) {
@@ -1184,10 +1168,10 @@ export function SystemSettings() {
   return (
     <div>
       <h2>系统设置</h2>
-      <RegistrationSettings token={token} autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
-      <SiteSettings token={token} autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
-      <ThemeSettings token={token} autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
-      <EmailSettings token={token} autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
+      <RegistrationSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
+      <SiteSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
+      <ThemeSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
+      <EmailSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
     </div>
   )
 }

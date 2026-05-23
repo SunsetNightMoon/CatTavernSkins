@@ -18,6 +18,8 @@ interface CachedSettings {
   videoMuted: boolean;
   lightBgOverlayOpacity: number;
   darkBgOverlayOpacity: number;
+  // 网站图标
+  favicon: string;
 }
 
 interface StoredCache {
@@ -56,6 +58,7 @@ const defaultSettings: CachedSettings = {
   videoMuted: true,
   lightBgOverlayOpacity: 30,
   darkBgOverlayOpacity: 30,
+  favicon: '/favicon.svg',
 };
 
 let cachedSettings: CachedSettings | null = readPersistentCache();
@@ -68,6 +71,13 @@ export function clearSiteTitleCache() {
   try {
     window.localStorage.removeItem(STORAGE_KEY);
   } catch { /* storage disabled */ }
+}
+
+function setFavicon(url: string) {
+  const link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
+  if (link) {
+    link.href = url
+  }
 }
 
 async function fetchSiteSettings(): Promise<CachedSettings> {
@@ -90,6 +100,7 @@ async function fetchSiteSettings(): Promise<CachedSettings> {
           videoMuted: String(data.VIDEO_MUTED || 'true').toLowerCase() === 'true',
           lightBgOverlayOpacity: parseInt(data.LIGHT_BG_OVERLAY_OPACITY) || 30,
           darkBgOverlayOpacity: parseInt(data.DARK_BG_OVERLAY_OPACITY) || 30,
+          favicon: String(data.SITE_FAVICON || '/favicon.svg'),
         };
       } else {
         cachedSettings = { ...defaultSettings };
@@ -146,6 +157,7 @@ export function usePageTitle(pageTitle: string | null = null): string {
       setVideoMuted(settings.videoMuted);
       setLightBgOverlayOpacity(settings.lightBgOverlayOpacity);
       setDarkBgOverlayOpacity(settings.darkBgOverlayOpacity);
+      setFavicon(settings.favicon);
     });
   }, [pageTitle, siteTitle, setTitle, setDescription, setLightBgImage, setDarkBgImage, setLoginBgImage, setLoginEmbedImage, setVideoMuted, setLightBgOverlayOpacity, setDarkBgOverlayOpacity]);
 

@@ -654,6 +654,8 @@ export const SETTINGS_MAP: Record<string, string> = {
   login_embed_image: 'LOGIN_EMBED_IMAGE',
   // WebM 视频静音
   video_muted: 'VIDEO_MUTED',
+  // 网站图标
+  site_favicon: 'SITE_FAVICON',
 };
 
 export const SETTINGS_DEFAULTS: Record<string, string> = {
@@ -670,6 +672,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   // 站点自定义设置默认值
   SITE_TITLE: 'Skin2',
   SITE_DESCRIPTION: 'Minecraft Skin Server - 自定义你的游戏形象',
+  SITE_FAVICON: '/favicon.svg',
   HOMEPAGE_TITLE_TEXT: '欢迎来到',
   HOMEPAGE_TEXT: 'WELCOME TO SKIN2!',
   HOMEPAGE_BUTTON_TEXT: '进入个人中心',

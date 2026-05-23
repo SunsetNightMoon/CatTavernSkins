@@ -70,20 +70,22 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
       });
     }
 
-    // 验证验证码
-    if (!captcha_session_id || !captcha_answer) {
-      return res.status(400).json({
-        error: 'BadRequest',
-        errorMessage: '请完成人机验证',
-      });
-    }
+    // 验证验证码（可通过 ENABLE_CAPTCHA=false 关闭）
+    if (process.env.ENABLE_CAPTCHA !== 'false') {
+      if (!captcha_session_id || !captcha_answer) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          errorMessage: '请完成人机验证',
+        });
+      }
 
-    const isCaptchaValid = await CaptchaService.verify(captcha_session_id, captcha_answer);
-    if (!isCaptchaValid) {
-      return res.status(400).json({
-        error: 'BadRequest',
-        errorMessage: '验证码错误或已过期，请重新验证',
-      });
+      const isCaptchaValid = await CaptchaService.verify(captcha_session_id, captcha_answer);
+      if (!isCaptchaValid) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          errorMessage: '验证码错误或已过期，请重新验证',
+        });
+      }
     }
 
     // 验证邮箱格式
@@ -311,9 +313,9 @@ router.get('/me', async (req: Request, res: Response) => {
     const accessToken = authHeader.substring(7);
     const token = await TokenModel.validate(accessToken);
     if (!token) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        errorMessage: 'Invalid token',
+      return res.status(401).json({
+        error: 'Unauthorized',
+        errorMessage: '无效的认证令牌',
       });
     }
 

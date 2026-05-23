@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore'
 import { Layout } from './components/Layout/Layout'
 import { profileService } from './services/profileService'
 import axios from 'axios'
+import { setAuthClearHandler } from './utils/api'
 import SetupWizard from './pages/Setup/SetupWizard'
 import { Login } from './pages/Auth/Login'
 import { Register } from './pages/Auth/Register'
@@ -18,10 +19,14 @@ import { AdminDashboard } from './pages/Admin/AdminDashboard'
 import MySkins from './pages/MySkins/MySkins'
 
 function App() {
-  const { isAuthenticated, user, updateUser, setSkinUrl } = useAuthStore()
+  const { isAuthenticated, user, updateUser, setSkinUrl, clearAuth } = useAuthStore()
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
-  const [redirectTo, setRedirectTo] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  // 注册全局 401 处理回调
+  useEffect(() => {
+    setAuthClearHandler(clearAuth)
+  }, [clearAuth])
 
   // 检查是否需要安装
   useEffect(() => {
@@ -40,22 +45,15 @@ function App() {
     checkSetup()
   }, [])
 
-  // 处理安装状态的页面跳转
+  // 根据安装状态直接跳转，避免中间状态导致路由组件提前渲染
   useEffect(() => {
     if (setupRequired === null) return
     if (setupRequired && window.location.pathname !== '/setup') {
-      setRedirectTo('/setup')
+      navigate('/setup', { replace: true })
     } else if (!setupRequired && window.location.pathname === '/setup') {
-      setRedirectTo('/')
+      navigate('/', { replace: true })
     }
-  }, [setupRequired])
-
-  // 执行跳转
-  useEffect(() => {
-    if (redirectTo) {
-      navigate(redirectTo)
-    }
-  }, [redirectTo, navigate])
+  }, [setupRequired, navigate])
 
   // 应用初始化时刷新用户信息
   useEffect(() => {
@@ -69,25 +67,28 @@ function App() {
         if (data.skinUrl !== undefined) {
           setSkinUrl(data.skinUrl || null)
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('刷新用户信息失败:', err)
+        if (err?.response?.status === 401 || err?.response?.status === 403) {
+          clearAuth()
+          navigate('/login', { replace: true })
+        }
       }
     }
     refreshUser()
-  }, [isAuthenticated, updateUser, setSkinUrl, setupRequired])
+  }, [isAuthenticated, updateUser, setSkinUrl, setupRequired, clearAuth, navigate])
 
   // 等待检查结果
   if (setupRequired === null) {
     return <div style={{ textAlign: 'center', padding: 80 }}>加载中...</div>
   }
 
-  // 正在跳转
-  if (redirectTo) {
-    return (
-      <div style={{ textAlign: 'center', padding: 80 }}>
-        正在跳转...
-      </div>
-    )
+  // 导航尚未完成，阻止路由提前渲染（防止未授权 API 调用被 setup 守卫拦截）
+  if (setupRequired && window.location.pathname !== '/setup') {
+    return <div style={{ textAlign: 'center', padding: 80 }}>正在跳转到安装向导...</div>
+  }
+  if (!setupRequired && window.location.pathname === '/setup') {
+    return <div style={{ textAlign: 'center', padding: 80 }}>正在跳转到首页...</div>
   }
 
   return (

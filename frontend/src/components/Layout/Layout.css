@@ -730,39 +730,39 @@
 .layout-page[data-theme="light"] .ant-input,
 .layout-page[data-theme="light"] .ant-input-search .ant-input,
 .layout-page[data-theme="light"] .ant-input-affix-wrapper {
-  background: rgba(0, 0, 0, 0.04) !important;
-  border-color: rgba(0, 0, 0, 0.15) !important;
-  color: #1a1a2e !important;
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  color: rgba(0, 0, 0, 0.88) !important;
 }
 
 .layout-page[data-theme="light"] .ant-input::placeholder {
-  color: rgba(26, 26, 46, 0.35) !important;
+  color: rgba(0, 0, 0, 0.25) !important;
 }
 
 .layout-page[data-theme="light"] .ant-input-affix-wrapper .ant-input-suffix {
-  color: rgba(26, 26, 46, 0.4) !important;
+  color: rgba(0, 0, 0, 0.45) !important;
 }
 
 /* Button */
 .layout-page[data-theme="light"] .ant-btn-text {
-  color: rgba(26, 26, 46, 0.7) !important;
+  color: rgba(0, 0, 0, 0.88) !important;
 }
 
 .layout-page[data-theme="light"] .ant-btn-text:hover {
-  color: #1a1a2e !important;
+  color: rgba(0, 0, 0, 0.88) !important;
   background: rgba(0, 0, 0, 0.06) !important;
 }
 
 .layout-page[data-theme="light"] .ant-btn-default {
-  background: rgba(0, 0, 0, 0.04) !important;
-  border-color: rgba(0, 0, 0, 0.15) !important;
-  color: rgba(26, 26, 46, 0.85) !important;
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  color: rgba(0, 0, 0, 0.88) !important;
 }
 
 .layout-page[data-theme="light"] .ant-btn-default:hover {
-  background: rgba(0, 0, 0, 0.08) !important;
-  border-color: rgba(0, 0, 0, 0.25) !important;
-  color: #1a1a2e !important;
+  background: #ffffff !important;
+  border-color: #4096ff !important;
+  color: #4096ff !important;
 }
 
 /* Tabs */
@@ -910,6 +910,108 @@ body[data-theme="light"] .ant-modal-close-x {
 .layout-page[data-theme="light"] .ant-modal-close-x:hover,
 body[data-theme="light"] .ant-modal-close-x:hover {
   color: #1a1a2e !important;
+}
+
+/* ============================================================
+   Portal elements (modals, popups, dropdowns rendered to body)
+   ============================================================ */
+
+/* Input */
+body[data-theme="light"] .ant-input,
+body[data-theme="light"] .ant-input-affix-wrapper,
+body[data-theme="light"] .ant-input-password {
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+body[data-theme="light"] .ant-input::placeholder,
+body[data-theme="light"] .ant-input-password input::placeholder {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+body[data-theme="light"] .ant-input:hover,
+body[data-theme="light"] .ant-input-affix-wrapper:hover {
+  border-color: #4096ff !important;
+}
+
+body[data-theme="light"] .ant-input:focus,
+body[data-theme="light"] .ant-input-affix-wrapper-focused {
+  border-color: #4096ff !important;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
+}
+
+body[data-theme="light"] .ant-input-affix-wrapper .ant-input-suffix {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+body[data-theme="light"] .ant-input-disabled {
+  background: #f5f5f5 !important;
+  color: rgba(0, 0, 0, 0.65) !important;
+  border-color: #d9d9d9 !important;
+}
+
+/* Form label */
+body[data-theme="light"] .ant-form-item-label > label {
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+/* Button */
+body[data-theme="light"] .ant-btn-default {
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+body[data-theme="light"] .ant-btn-default:hover {
+  border-color: #4096ff !important;
+  color: #4096ff !important;
+}
+
+body[data-theme="light"] .ant-btn-dangerous {
+  background: #ffffff !important;
+  border-color: #ff4d4f !important;
+  color: #ff4d4f !important;
+}
+
+/* Select */
+body[data-theme="light"] .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+body[data-theme="light"] .ant-select-arrow {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Tag */
+body[data-theme="light"] .ant-tag {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Divider */
+body[data-theme="light"] .ant-divider {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Spin */
+body[data-theme="light"] .ant-spin-dot-item {
+  background: #1677ff !important;
+}
+
+/* message / notification */
+body[data-theme="light"] .ant-message-notice-content {
+  background: #ffffff !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* popconfirm */
+body[data-theme="light"] .ant-popconfirm .ant-popover-inner,
+body[data-theme="light"] .ant-popover .ant-popover-inner {
+  background: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Alert */

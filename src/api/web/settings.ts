@@ -44,6 +44,8 @@ router.get('/public', async (_req: Request, res: Response) => {
       LOGIN_EMBED_IMAGE: settings.LOGIN_EMBED_IMAGE ?? SETTINGS_DEFAULTS.LOGIN_EMBED_IMAGE,
       // WebM 视频静音
       VIDEO_MUTED: settings.VIDEO_MUTED ?? SETTINGS_DEFAULTS.VIDEO_MUTED,
+      // 网站图标
+      SITE_FAVICON: settings.SITE_FAVICON ?? SETTINGS_DEFAULTS.SITE_FAVICON,
     };
 
     res.json(publicSettings);
@@ -68,6 +70,8 @@ router.get('/public', async (_req: Request, res: Response) => {
       LOGIN_EMBED_IMAGE: SETTINGS_DEFAULTS.LOGIN_EMBED_IMAGE,
       // WebM 视频静音默认值
       VIDEO_MUTED: SETTINGS_DEFAULTS.VIDEO_MUTED,
+      // 网站图标默认值
+      SITE_FAVICON: SETTINGS_DEFAULTS.SITE_FAVICON,
     });
   }
 });

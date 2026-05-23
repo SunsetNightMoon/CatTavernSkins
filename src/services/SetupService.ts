@@ -166,6 +166,8 @@ export class SetupService {
       DB_TYPE: dbType,
       PORT: '3000',
       JWT_SECRET: require('crypto').randomBytes(32).toString('hex'),
+      SITE_TITLE: config.site_name || 'Minecraft Skin Server',
+      SITE_DESCRIPTION: 'Minecraft Skin Server',
     }
 
     if (dbType === 'sqlite') {
@@ -178,14 +180,14 @@ export class SetupService {
       if (config.db_password) envUpdates.DB_PASSWORD = config.db_password
     }
 
-    // 邮箱配置（网易邮箱模板）
-    if (config.mail_host) envUpdates.MAIL_HOST = config.mail_host
-    if (config.mail_port) envUpdates.MAIL_PORT = String(config.mail_port)
-    if (config.mail_user) envUpdates.MAIL_USER = config.mail_user
-    if (config.mail_pass) envUpdates.MAIL_PASS = config.mail_pass
-    if (config.mail_from) envUpdates.MAIL_FROM = config.mail_from
+    // 邮箱配置
+    if (config.mail_host) envUpdates.SMTP_HOST = config.mail_host
+    if (config.mail_port) envUpdates.SMTP_PORT = String(config.mail_port)
+    if (config.mail_user) envUpdates.SMTP_USER = config.mail_user
+    if (config.mail_pass) envUpdates.SMTP_PASS = config.mail_pass
+    if (config.mail_from) envUpdates.SMTP_FROM = config.mail_from
     // 默认使用 465 端口对应 SSL
-    envUpdates.MAIL_SECURE = config.mail_port === 465 ? 'true' : 'false'
+    envUpdates.SMTP_SECURE = config.mail_port === 465 ? 'true' : 'false'
 
     for (const [key, value] of Object.entries(envUpdates)) {
       const regex = new RegExp(`^${key}=.*$`, 'm')
@@ -281,7 +283,7 @@ export class SetupService {
     const tables = [
       // users 表
       `CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         user_uid INTEGER UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         username TEXT,
@@ -295,8 +297,8 @@ export class SetupService {
       )`,
       // profiles 表
       `CREATE TABLE IF NOT EXISTS profiles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
         name TEXT UNIQUE NOT NULL,
         is_default INTEGER DEFAULT 0,
         name_changed_at TEXT,
@@ -305,8 +307,8 @@ export class SetupService {
       // skins 表 —— 与 Skin.ts 模型字段完全对齐
       `CREATE TABLE IF NOT EXISTS skins (
         id TEXT PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        profile_id INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
+        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+        profile_id TEXT REFERENCES profiles(id) ON DELETE CASCADE,
         file_path TEXT NOT NULL,
         file_hash TEXT NOT NULL,
         original_name TEXT,
@@ -334,7 +336,7 @@ export class SetupService {
       // capes 表 —— 与 Cape.ts 模型字段完全对齐
       `CREATE TABLE IF NOT EXISTS capes (
         id TEXT PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
         file_path TEXT NOT NULL,
         file_hash TEXT NOT NULL,
         original_name TEXT,
@@ -399,7 +401,7 @@ export class SetupService {
       // skin_favorites 表
       `CREATE TABLE IF NOT EXISTS skin_favorites (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
         skin_id TEXT NOT NULL,
         created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
         UNIQUE(user_id, skin_id)
@@ -407,7 +409,7 @@ export class SetupService {
       // cape_favorites 表
       `CREATE TABLE IF NOT EXISTS cape_favorites (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
         cape_id TEXT NOT NULL,
         created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
         UNIQUE(user_id, cape_id)
@@ -495,12 +497,7 @@ export class SetupService {
 
       for (const [table, columns] of Object.entries(tableColumns)) {
         try {
-          const rows: any[] = await new Promise((resolve, reject) => {
-            db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
-              if (err) reject(err)
-              else resolve(rows)
-            })
-          })
+          const rows: any[] = await db.all(`PRAGMA table_info(${table})`)
           const existingColumns = new Set(rows.map((r: any) => r.name))
 
           for (const [column, type] of Object.entries(columns)) {

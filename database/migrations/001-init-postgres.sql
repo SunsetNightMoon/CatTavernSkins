@@ -204,11 +204,11 @@ ON CONFLICT (key) DO NOTHING;
 -- 8. 创建外键约束（在表创建后添加）
 -- ============================================
 ALTER TABLE profiles 
-  ADD CONSTRAINT IF NOT EXISTS fk_profiles_skin 
+  ADD CONSTRAINT fk_profiles_skin 
   FOREIGN KEY (skin_id) REFERENCES skins(id) ON DELETE SET NULL;
 
 ALTER TABLE profiles 
-  ADD CONSTRAINT IF NOT EXISTS fk_profiles_cape 
+  ADD CONSTRAINT fk_profiles_cape 
   FOREIGN KEY (cape_id) REFERENCES capes(id) ON DELETE SET NULL;
 
 -- ============================================

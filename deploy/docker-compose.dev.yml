@@ -43,12 +43,12 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - DB_TYPE=postgres
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_DATABASE=${DB_DATABASE:-skin_server}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - DB_HOST=${DB_HOST:-}
+      - DB_PORT=${DB_PORT:-}
+      - DB_DATABASE=${DB_DATABASE:-}
+      - DB_USER=${DB_USER:-}
+      - DB_PASSWORD=${DB_PASSWORD:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - BASE_URL=http://localhost:3000
