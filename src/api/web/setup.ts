@@ -1,0 +1,221 @@
+import { Router, Request, Response } from 'express';
+import { SetupService } from '../../services/SetupService';
+import nodemailer from 'nodemailer';
+import { Pool } from 'pg';
+import * as path from 'path';
+
+const router = Router();
+
+/**
+ * GET /api/setup/status
+ * 检查系统是否已初始化
+ */
+router.get('/status', async (_req: Request, res: Response) => {
+  try {
+    const isSetup = await SetupService.isSetupCompleted();
+    res.json({ setup_completed: isSetup });
+  } catch (error: any) {
+    res.status(500).json({ error: 'InternalServerError', message: error.message });
+  }
+});
+
+/**
+ * POST /api/setup/test-db
+ * 测试数据库连接（支持 SQLite / PostgreSQL）
+ */
+router.post('/test-db', async (req: Request, res: Response) => {
+  try {
+    const isSetup = await SetupService.isSetupCompleted();
+    if (isSetup) {
+      return res.status(403).json({ success: false, message: '系统已初始化，此端点不可用' });
+    }
+
+    const { db_type, db_host, db_port, db_name, db_user, db_password } = req.body;
+
+    if (db_type === 'sqlite') {
+      // SQLite：检查 data 目录是否可写
+      const fs = require('fs');
+      const dbPath = './data/skin_server.db';
+      const dbDir = path.dirname(dbPath);
+      try {
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+        // 尝试写一个临时文件测试权限
+        const testFile = path.join(dbDir, '.write_test');
+        fs.writeFileSync(testFile, 'ok');
+        fs.unlinkSync(testFile);
+        return res.json({ success: true, message: 'SQLite 路径可写，连接正常' });
+      } catch (e: any) {
+        return res.status(400).json({ success: false, message: `SQLite 路径测试失败: ${e.message}` });
+      }
+    }
+
+    if (db_type === 'postgresql') {
+      if (!db_host || !db_name || !db_user) {
+        return res.status(400).json({ success: false, message: 'PostgreSQL 连接信息不完整' });
+      }
+
+      const testPool = new Pool({
+        host: db_host,
+        port: parseInt(db_port || '5432'),
+        database: db_name,
+        user: db_user,
+        password: db_password || '',
+        connectionTimeoutMillis: 5000,
+        max: 1,
+      });
+
+      try {
+        const client = await testPool.connect();
+        await client.query('SELECT 1');
+        client.release();
+        await testPool.end();
+        return res.json({ success: true, message: 'PostgreSQL 连接成功' });
+      } catch (e: any) {
+        await testPool.end();
+        let msg = e.message || '连接失败';
+        if (e.code === 'ECONNREFUSED') msg = '无法连接到数据库服务器，请检查主机和端口';
+        if (e.code === '28P01') msg = '认证失败，请检查用户名和密码';
+        if (e.code === '3D000') msg = '数据库不存在';
+        return res.status(400).json({ success: false, message: msg });
+      }
+    }
+
+    return res.status(400).json({ success: false, message: '不支持的数据库类型' });
+  } catch (error: any) {
+    console.error('[Setup] 测试数据库失败:', error);
+    res.status(500).json({ success: false, message: error.message || '测试失败' });
+  }
+});
+
+/**
+ * POST /api/setup/test-email
+ * 测试邮件 SMTP 连接
+ */
+router.post('/test-email', async (req: Request, res: Response) => {
+  try {
+    const isSetup = await SetupService.isSetupCompleted();
+    if (isSetup) {
+      return res.status(403).json({ success: false, message: '系统已初始化，此端点不可用' });
+    }
+
+    const { mail_host, mail_port, mail_user, mail_pass } = req.body;
+
+    if (!mail_host || !mail_user || !mail_pass) {
+      return res.status(400).json({ success: false, message: '邮箱配置不完整' });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: mail_host,
+      port: parseInt(mail_port || '465'),
+      secure: parseInt(mail_port || '465') === 465,
+      auth: {
+        user: mail_user,
+        pass: mail_pass,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+    });
+
+    try {
+      await transporter.verify();
+      return res.json({ success: true, message: 'SMTP 连接验证成功' });
+    } catch (e: any) {
+      let msg = e.message || 'SMTP 验证失败';
+      if (e.code === 'EAUTH') msg = 'SMTP 认证失败，请检查用户名和授权码';
+      if (e.code === 'ESOCKET') msg = '无法连接 SMTP 服务器，请检查服务器地址和端口';
+      if (e.code === 'ETIMEDOUT') msg = '连接 SMTP 服务器超时';
+      return res.status(400).json({ success: false, message: msg });
+    }
+  } catch (error: any) {
+    console.error('[Setup] 测试邮件失败:', error);
+    res.status(500).json({ success: false, message: error.message || '测试失败' });
+  }
+});
+
+/**
+ * POST /api/setup/complete
+ * 完成安装（支持 SQLite / PostgreSQL 选择）
+ * 字段：site_name, db_type, db_host, db_port, db_name, db_user, db_password,
+ *       mail_host, mail_port, mail_user, mail_pass, mail_from,
+ *       admin_username, admin_email, admin_password
+ */
+router.post('/complete', async (req: Request, res: Response) => {
+  try {
+    const {
+      site_name,
+      db_type = 'sqlite',
+      db_host,
+      db_port,
+      db_name,
+      db_user,
+      db_password,
+      mail_host,
+      mail_port,
+      mail_user,
+      mail_pass,
+      mail_from,
+      admin_email,
+      admin_password,
+      admin_username,
+    } = req.body;
+
+    // 验证必填
+    if (!admin_email || !admin_password) {
+      return res.status(400).json({ success: false, message: '邮箱和密码不能为空' });
+    }
+    if (admin_password.length < 6) {
+      return res.status(400).json({ success: false, message: '密码至少需要6位' });
+    }
+    if (db_type === 'postgresql') {
+      if (!db_host || !db_name || !db_user || !db_password) {
+        return res.status(400).json({ success: false, message: 'PostgreSQL 连接信息不完整' });
+      }
+    }
+    if (!mail_host || !mail_user || !mail_pass || !mail_from) {
+      return res.status(400).json({ success: false, message: '邮箱配置不完整' });
+    }
+
+    // 检查是否已安装
+    const isSetup = await SetupService.isSetupCompleted();
+    if (isSetup) {
+      return res.status(403).json({ success: false, message: '系统已初始化，无法重复安装' });
+    }
+
+    const result = await SetupService.completeSetup({
+      site_name: site_name || 'Minecraft Skin Server',
+      db_type,
+      db_host,
+      db_port: db_port ? Number(db_port) : 5432,
+      db_name,
+      db_user,
+      db_password,
+      mail_host,
+      mail_port: mail_port ? Number(mail_port) : 465,
+      mail_user,
+      mail_pass,
+      mail_from,
+      admin_email,
+      admin_password,
+      admin_username: admin_username || admin_email.split('@')[0],
+    });
+
+    res.status(200).json({
+      success: true,
+      message: '安装完成！',
+      user: {
+        user_uid: result.user.user_uid,
+        email: result.user.email,
+        username: result.user.username,
+        role: result.user.role,
+        level: result.user.level,
+      }
+    });
+  } catch (error: any) {
+    console.error('[Setup] 安装失败:', error);
+    res.status(500).json({ success: false, message: error.message || '安装失败' });
+  }
+});
+
+export default router;

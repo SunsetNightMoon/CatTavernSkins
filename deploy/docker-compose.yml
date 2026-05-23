@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: minecraft-skin-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - DB_TYPE=${DB_TYPE:-postgres}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_DATABASE=${DB_DATABASE:-skin_server}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_PATH=${DB_PATH:-/app/data/skin_server.db}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - RSA_PRIVATE_KEY_PATH=/app/keys/private.pem
+      - RSA_PUBLIC_KEY_PATH=/app/keys/public.pem
+      - UPLOAD_DIR=/app/uploads
+      - ONE_PANEL_MODE=${ONE_PANEL_MODE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ../uploads:/app/uploads
+      - ../keys:/app/keys
+      - ../data:/app/data
+      - ../logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - skin-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: minecraft-skin-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_DATABASE:-skin_server}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/migrations/001-init-postgres.sql:/docker-entrypoint-initdb.d/001-init-postgres.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - skin-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: minecraft-skin-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - skin-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  skin-network:
+    driver: bridge

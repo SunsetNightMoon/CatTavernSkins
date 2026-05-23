@@ -1,0 +1,47 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 主题色变量（暗色为默认） */
+  --text-primary: #fff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-weak: rgba(255, 255, 255, 0.5);
+  --text-subtle: rgba(255, 255, 255, 0.45);
+  --text-faint: rgba(255, 255, 255, 0.35);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --bg-inner: rgba(255, 255, 255, 0.04);
+}
+
+body[data-theme="light"] {
+  --text-primary: #1a1a2e;
+  --text-secondary: rgba(26, 26, 46, 0.85);
+  --text-muted: rgba(26, 26, 46, 0.6);
+  --text-weak: rgba(26, 26, 46, 0.5);
+  --text-subtle: rgba(26, 26, 46, 0.45);
+  --text-faint: rgba(26, 26, 46, 0.35);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --bg-card: rgba(255, 255, 255, 0.72);
+  --bg-hover: rgba(0, 0, 0, 0.06);
+  --bg-inner: rgba(0, 0, 0, 0.03);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+#root {
+  min-height: 100vh;
+}
