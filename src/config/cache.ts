@@ -1,4 +1,10 @@
-import redis from './redis';
+import { getRedisClient } from './redis';
+
+function getRedis() {
+  const client = getRedisClient();
+  if (!client || !client.isReady) return null;
+  return client;
+}
 
 export class CacheHelper {
   // 缓存TTL（秒）
@@ -11,9 +17,10 @@ export class CacheHelper {
 
   // 获取缓存
   static async get(key: string): Promise<string | null> {
+    const redis = getRedis();
+    if (!redis) return null;
     try {
-      const client = redis;
-      return await client.get(key);
+      return await redis.get(key);
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -22,9 +29,10 @@ export class CacheHelper {
 
   // 设置缓存
   static async set(key: string, value: string, ttl: number = 300): Promise<void> {
+    const redis = getRedis();
+    if (!redis) return;
     try {
-      const client = redis;
-      await client.set(key, value, { EX: ttl });
+      await redis.set(key, value, { EX: ttl });
     } catch (error) {
       console.error('Cache set error:', error);
     }
@@ -32,9 +40,10 @@ export class CacheHelper {
 
   // 删除缓存
   static async del(key: string): Promise<void> {
+    const redis = getRedis();
+    if (!redis) return;
     try {
-      const client = redis;
-      await client.del(key);
+      await redis.del(key);
     } catch (error) {
       console.error('Cache del error:', error);
     }
@@ -86,11 +95,12 @@ export class CacheHelper {
 
   // 清除皮肤库缓存（数据变更时调用）
   static async clearLibraryCache(): Promise<void> {
+    const redis = getRedis();
+    if (!redis) return;
     try {
-      const client = redis;
-      const keys = await client.keys('library:*');
+      const keys = await redis.keys('library:*');
       if (keys.length > 0) {
-        await client.del(keys);
+        await redis.del(keys);
       }
     } catch (error) {
       console.error('Clear library cache error:', error);

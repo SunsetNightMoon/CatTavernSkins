@@ -406,6 +406,39 @@
   box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
 }
 
+/* Auth page footer */
+.auth-page__footer {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 20px;
+  line-height: 1.8;
+}
+
+.auth-page__footer a {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-page__footer a:hover {
+  color: #4a9eff;
+}
+
+[data-theme="light"] .auth-page__footer {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] .auth-page__footer a {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .auth-page__footer a:hover {
+  color: #2563eb;
+}
+
 [data-theme="light"] .auth-card .ant-input-affix-wrapper .ant-input-suffix {
   color: rgba(0, 0, 0, 0.45) !important;
 }

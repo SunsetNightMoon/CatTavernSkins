@@ -8,6 +8,7 @@ import { TokenModel } from '../../models/Token';
 import { UserModel } from '../../models/User';
 import { validateSkin, validateCape, processSkin, calculateFileHash } from '../../utils/image';
 import * as fs from 'fs/promises';
+import { DB } from '../../config/database';
 
 const router = Router();
 
@@ -208,6 +209,272 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
     res.status(500).json({
       error: 'InternalServerError',
       errorMessage: error.message || '上传失败',
+    });
+  }
+});
+
+/**
+ * POST /api/user/profile/:uuid/skin
+ * 应用已有皮肤到角色
+ */
+router.post('/:uuid/skin', async (req: any, res: Response) => {
+  try {
+    const { uuid } = req.params;
+    const { skin_id } = req.body;
+
+    if (!skin_id) {
+      return res.status(400).json({
+        error: 'BadRequest',
+        errorMessage: '缺少 skin_id 参数',
+      });
+    }
+
+    // 验证 access_token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        errorMessage: 'Missing or invalid access token',
+      });
+    }
+
+    const accessToken = authHeader.substring(7);
+    const token = await TokenModel.validate(accessToken);
+    if (!token) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: 'Invalid token',
+      });
+    }
+
+    // 检查邮箱验证状态
+    const isVerified = await checkEmailVerified(token.user_id, res);
+    if (!isVerified) return;
+
+    // 验证皮肤是否存在
+    const skin = await SkinModel.findById(skin_id) as any;
+    if (!skin) {
+      return res.status(404).json({
+        error: 'NotFound',
+        errorMessage: '皮肤不存在',
+      });
+    }
+
+    // 验证用户是否有权使用该皮肤
+    const isOwner = skin.user_id === token.user_id;
+    const isPublic = skin.permission_level === 'public_downloadable';
+    
+    // 检查是否已收藏皮肤
+    const favResult = await DB.query(
+      'SELECT 1 FROM skin_favorites WHERE user_id = $1 AND skin_id = $2',
+      [token.user_id, skin_id]
+    );
+    const isFavorited = favResult.rows.length > 0;
+
+    if (!isOwner && !isFavorited && !isPublic) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: '无权使用此皮肤',
+      });
+    }
+
+    // 验证角色是否属于该用户
+    const profile = await ProfileModel.findById(uuid);
+    if (!profile || profile.user_id !== token.user_id) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: '角色不属于当前用户',
+      });
+    }
+
+    // 更新角色的 skin_id
+    await ProfileModel.updateSkin(uuid, skin_id);
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Apply skin error:', error);
+    res.status(500).json({
+      error: 'InternalServerError',
+      errorMessage: error.message || '应用皮肤失败',
+    });
+  }
+});
+
+/**
+ * POST /api/user/profile/:uuid/cape
+ * 应用已有披风到角色
+ */
+router.post('/:uuid/cape', async (req: any, res: Response) => {
+  try {
+    const { uuid } = req.params;
+    const { cape_id } = req.body;
+
+    if (!cape_id) {
+      return res.status(400).json({
+        error: 'BadRequest',
+        errorMessage: '缺少 cape_id 参数',
+      });
+    }
+
+    // 验证 access_token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        errorMessage: 'Missing or invalid access token',
+      });
+    }
+
+    const accessToken = authHeader.substring(7);
+    const token = await TokenModel.validate(accessToken);
+    if (!token) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: 'Invalid token',
+      });
+    }
+
+    // 检查邮箱验证状态
+    const isVerified = await checkEmailVerified(token.user_id, res);
+    if (!isVerified) return;
+
+    // 验证披风是否存在
+    const cape = await CapeModel.findById(cape_id) as any;
+    if (!cape) {
+      return res.status(404).json({
+        error: 'NotFound',
+        errorMessage: '披风不存在',
+      });
+    }
+
+    // 验证用户是否有权使用该披风
+    const isOwner = cape.user_id === token.user_id;
+    const isPublic = cape.permission_level === 'public_downloadable';
+    
+    // 检查是否已收藏披风
+    const favResult = await DB.query(
+      'SELECT 1 FROM cape_favorites WHERE user_id = $1 AND cape_id = $2',
+      [token.user_id, cape_id]
+    );
+    const isFavorited = favResult.rows.length > 0;
+
+    if (!isOwner && !isFavorited && !isPublic) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: '无权使用此披风',
+      });
+    }
+
+    // 验证角色是否属于该用户
+    const profile = await ProfileModel.findById(uuid);
+    if (!profile || profile.user_id !== token.user_id) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: '角色不属于当前用户',
+      });
+    }
+
+    // 更新角色的 cape_id
+    await ProfileModel.updateCape(uuid, cape_id);
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Apply cape error:', error);
+    res.status(500).json({
+      error: 'InternalServerError',
+      errorMessage: error.message || '应用披风失败',
+    });
+  }
+});
+
+/**
+ * DELETE /api/user/profile/:uuid/skin
+ * 移除角色的 skin_id
+ */
+router.delete('/:uuid/skin', async (req: any, res: Response) => {
+  try {
+    const { uuid } = req.params;
+
+    // 验证 access_token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        errorMessage: 'Missing or invalid access token',
+      });
+    }
+
+    const accessToken = authHeader.substring(7);
+    const token = await TokenModel.validate(accessToken);
+    if (!token) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: 'Invalid token',
+      });
+    }
+
+    // 验证角色是否属于该用户
+    const profile = await ProfileModel.findById(uuid);
+    if (!profile || profile.user_id !== token.user_id) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: '角色不属于当前用户',
+      });
+    }
+
+    // 移除角色的 skin_id
+    await ProfileModel.updateSkin(uuid, null);
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Remove skin error:', error);
+    res.status(500).json({
+      error: 'InternalServerError',
+      errorMessage: error.message || '移除皮肤失败',
+    });
+  }
+});
+
+/**
+ * DELETE /api/user/profile/:uuid/cape
+ * 移除角色的 cape_id
+ */
+router.delete('/:uuid/cape', async (req: any, res: Response) => {
+  try {
+    const { uuid } = req.params;
+
+    // 验证 access_token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        errorMessage: 'Missing or invalid access token',
+      });
+    }
+
+    const accessToken = authHeader.substring(7);
+    const token = await TokenModel.validate(accessToken);
+    if (!token) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: 'Invalid token',
+      });
+    }
+
+    // 验证角色是否属于该用户
+    const profile = await ProfileModel.findById(uuid);
+    if (!profile || profile.user_id !== token.user_id) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        errorMessage: '角色不属于当前用户',
+      });
+    }
+
+    // 移除角色的 cape_id
+    await ProfileModel.updateCape(uuid, null);
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Remove cape error:', error);
+    res.status(500).json({
+      error: 'InternalServerError',
+      errorMessage: error.message || '移除披风失败',
     });
   }
 });

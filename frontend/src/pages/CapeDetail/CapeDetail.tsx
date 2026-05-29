@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Button, Tag, Card, Descriptions, Spin, message, Space, Divider, Typography } from 'antd'
+import { Button, Tag, Card, Descriptions, Spin, message, Space, Divider, Typography, Alert, Switch } from 'antd'
 import { ArrowLeftOutlined, DownloadOutlined, HeartOutlined, HeartFilled, StarOutlined } from '@ant-design/icons'
 import type { Cape } from '../../types'
 import { Skin3DViewer } from '../../components/Skin3DViewer/Skin3DViewer'
@@ -18,8 +18,9 @@ const LICENSE_TAG_COLORS: Record<string, string> = {
   'CC_BY-NC_3.0': 'purple',
   'CC_BY-NC_4.0': 'purple',
   'ARR': 'red',
-  'GPLv3': 'orange',
+  '': 'orange',
   'Custom': 'default',
+  'AI_CC0': 'geekblue',
 }
 
 export function CapeDetail() {
@@ -280,6 +281,80 @@ export function CapeDetail() {
               {cape.approval_status === 'rejected' && <Tag color="red">已拒绝</Tag>}
             </Descriptions.Item>
           </Descriptions>
+
+          {/* 管理员操作区 + 红色警告 */}
+      {user && user.level >= 1 && (
+        <Card size="small" style={{ marginTop: 16, border: '1px solid #d9d9d9' }}>
+          <div style={{ marginBottom: 8 }}><b>管理员操作</b></div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span>AI 生成标记：</span>
+            <Switch
+              checked={!!cape.is_ai_generated}
+              onChange={async (checked) => {
+                try {
+                  const res = await fetch(`/api/admin/capes/${cape.id}/ai-generated`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ is_ai_generated: checked })
+                  });
+                  if (!res.ok) throw new Error('操作失败');
+                  setCape({ ...cape, is_ai_generated: checked ? 1 : 0 });
+                  message.success(checked ? '已标记为 AI 生成' : '已取消 AI 标记');
+                } catch (e: any) {
+                  message.error(e.message || '操作失败');
+                }
+              }}
+            />
+            {user.level >= 2 && (
+              <>
+                {cape.admin_warning ? (
+                  <Button size="small" danger onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/admin/capes/${cape.id}/warning`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` }
+                      });
+                      if (!res.ok) throw new Error('移除失败');
+                      setCape({ ...cape, admin_warning: null, warning_set_by_level: null });
+                      message.success('已移除警告');
+                    } catch (e: any) {
+                      message.error(e.message || '操作失败');
+                    }
+                  }}>移除警告</Button>
+                ) : (
+                  <Button size="small" danger onClick={async () => {
+                    const w = prompt('输入警告内容：');
+                    if (!w) return;
+                    try {
+                      const res = await fetch(`/api/admin/capes/${cape.id}/warning`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ warning: w })
+                      });
+                      if (!res.ok) throw new Error('添加失败');
+                      setCape({ ...cape, admin_warning: w, warning_set_by_level: user.level });
+                      message.success('已添加警告');
+                    } catch (e: any) {
+                      message.error(e.message || '操作失败');
+                    }
+                  }}>添加警告</Button>
+                )}
+              </>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* 红色警告 */}
+      {cape.admin_warning && (
+        <Alert
+          type="error"
+          showIcon
+          message="管理员警告"
+          description={cape.admin_warning}
+          style={{ marginTop: 16 }}
+        />
+      )}
 
           {/* 简介卡片 */}
           {cape.description && (

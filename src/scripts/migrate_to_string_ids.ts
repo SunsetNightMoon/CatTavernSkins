@@ -86,10 +86,13 @@ async function migrate() {
       width INTEGER NOT NULL DEFAULT 64,
       height INTEGER NOT NULL DEFAULT 64,
       description TEXT,
-      license_type TEXT DEFAULT 'ARR' CHECK (license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'GPLv3', 'Custom')),
+      license_type TEXT DEFAULT 'ARR' CHECK (license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'AI_CC0', 'Custom')),
       permission_level TEXT DEFAULT 'private' CHECK (permission_level IN ('private', 'public_no_download', 'public_downloadable')),
       is_public INTEGER DEFAULT 0,
       is_downloadable INTEGER DEFAULT 0,
+      is_ai_generated INTEGER DEFAULT 0,
+      admin_warning TEXT DEFAULT NULL,
+      warning_set_by_level INTEGER DEFAULT NULL,
       approval_status TEXT DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
       approved_by TEXT,
       approved_at TEXT,
@@ -110,7 +113,7 @@ async function migrate() {
   for (const skin of skins) {
     await db.run(
       `INSERT INTO skins_new (id, user_id, profile_id, file_path, model_type, file_hash, file_size, width, height, description, license_type, permission_level, is_public, is_downloadable, approval_status, approved_by, approved_at, rejected_by, rejection_reason, download_count, view_count, created_at, name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         skinIdMap.get(skin.id),
         skin.user_id,
@@ -126,6 +129,9 @@ async function migrate() {
         skin.permission_level,
         skin.is_public,
         skin.is_downloadable,
+        0,
+        null,
+        null,
         skin.approval_status,
         skin.approved_by,
         skin.approved_at,
@@ -173,6 +179,9 @@ async function migrate() {
       rejection_reason TEXT,
       download_count INTEGER DEFAULT 0,
       view_count INTEGER DEFAULT 0,
+      is_ai_generated INTEGER DEFAULT 0,
+      admin_warning TEXT DEFAULT NULL,
+      warning_set_by_level INTEGER DEFAULT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )

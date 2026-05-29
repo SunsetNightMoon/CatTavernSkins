@@ -46,6 +46,11 @@ router.get('/public', async (_req: Request, res: Response) => {
       VIDEO_MUTED: settings.VIDEO_MUTED ?? SETTINGS_DEFAULTS.VIDEO_MUTED,
       // 网站图标
       SITE_FAVICON: settings.SITE_FAVICON ?? SETTINGS_DEFAULTS.SITE_FAVICON,
+      // 版权设置
+      COPYRIGHT_TEXT: settings.COPYRIGHT_TEXT ?? SETTINGS_DEFAULTS.COPYRIGHT_TEXT,
+      COPYRIGHT_BEIAN: settings.COPYRIGHT_BEIAN ?? SETTINGS_DEFAULTS.COPYRIGHT_BEIAN,
+      // 项目版权标识（硬编码，不可通过管理面板更改）
+    COPYRIGHT_PROJECT: settings.COPYRIGHT_PROJECT ?? SETTINGS_DEFAULTS.COPYRIGHT_PROJECT,
     };
 
     res.json(publicSettings);
@@ -72,6 +77,11 @@ router.get('/public', async (_req: Request, res: Response) => {
       VIDEO_MUTED: SETTINGS_DEFAULTS.VIDEO_MUTED,
       // 网站图标默认值
       SITE_FAVICON: SETTINGS_DEFAULTS.SITE_FAVICON,
+      // 版权设置默认值
+      COPYRIGHT_TEXT: SETTINGS_DEFAULTS.COPYRIGHT_TEXT,
+      COPYRIGHT_BEIAN: SETTINGS_DEFAULTS.COPYRIGHT_BEIAN,
+      // 项目版权标识（硬编码，不可通过管理面板更改）
+      COPYRIGHT_PROJECT: SETTINGS_DEFAULTS.COPYRIGHT_PROJECT,
     });
   }
 });

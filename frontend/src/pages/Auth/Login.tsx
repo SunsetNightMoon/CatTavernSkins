@@ -1,12 +1,32 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message } from 'antd'
+import { Form, Input, Button, message, AutoComplete } from 'antd'
+import type { SelectProps } from 'antd'
 import { authService } from '../../services/authService'
 import { useAuthStore } from '../../store/authStore'
 import { useSiteStore } from '../../store/siteStore'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { isVideoFile } from '../../utils/media'
 import './AuthShared.css'
+
+const EMAIL_SUFFIXES = [
+  '163.com',
+  'gmail.com',
+  'qq.com',
+  'outlook.com',
+  'yahoo.com',
+  'hotmail.com',
+  'icloud.com',
+  'foxmail.com',
+]
+
+function getEmailOptions(input: string): SelectProps<string>['options'] {
+  if (!input || input.includes('@')) return []
+  return EMAIL_SUFFIXES.map(suffix => ({
+    label: `${input}@${suffix}`,
+    value: `${input}@${suffix}`,
+  }))
+}
 
 export function Login() {
   usePageTitle('登录')
@@ -20,6 +40,21 @@ export function Login() {
   const hasEmbedImage = loginEmbedImage && loginEmbedImage.trim() !== ''
   const isBgVideo = hasCustomBg && isVideoFile(loginBgImage)
   const isEmbedVideo = hasEmbedImage && isVideoFile(loginEmbedImage)
+
+  const [emailOptions, setEmailOptions] = useState<SelectProps<string>['options']>([])
+
+  const handleEmailSearch = (value: string) => {
+    if (!value || value.includes('@')) {
+      setEmailOptions([])
+      return
+    }
+    setEmailOptions(getEmailOptions(value))
+  }
+
+  const handleEmailSelect = (value: string) => {
+    form.setFieldValue('email', value)
+    setEmailOptions([])
+  }
 
   const onFinish = async (values: any) => {
     setLoading(true)
@@ -112,7 +147,14 @@ export function Login() {
               name="email"
               rules={[{ required: true, type: 'email', message: '请输入有效的邮箱' }]}
             >
-              <Input placeholder="请输入邮箱" size="large" />
+              <AutoComplete
+                options={emailOptions}
+                onSearch={handleEmailSearch}
+                onSelect={handleEmailSelect}
+                onBlur={() => setTimeout(() => setEmailOptions([]), 200)}
+                placeholder="请输入邮箱"
+                size="large"
+              />
             </Form.Item>
 
             <Form.Item
@@ -137,6 +179,7 @@ export function Login() {
           </div>
         </div>
       </div>
+
     </div>
   )
 }

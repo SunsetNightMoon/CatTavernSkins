@@ -9,7 +9,7 @@ const { Content, Footer } = AntLayout
 
 export function Layout() {
   const location = useLocation()
-  const { title, theme, lightBgImage, darkBgImage, lightBgOverlayOpacity, darkBgOverlayOpacity } = useSiteStore()
+  const { theme, lightBgImage, darkBgImage, lightBgOverlayOpacity, darkBgOverlayOpacity, copyrightText, copyrightBeian, copyrightProject } = useSiteStore()
 
   // 同步主题到 body
   useEffect(() => {
@@ -69,7 +69,27 @@ export function Layout() {
         </Content>
 
         <Footer className="layout-footer">
-          {title} &copy; 2026 Created by You
+          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-subtle)' }}>
+            <span dangerouslySetInnerHTML={{ __html: copyrightText }} />
+            {copyrightBeian && (
+              <span style={{ marginLeft: 12 }}>
+                <a
+                  href="https://beian.miit.gov.cn/#/Integrated/recordQuery"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}
+                >
+                  {copyrightBeian}
+                </a>
+              </span>
+            )}
+            <span style={{ marginLeft: 12, opacity: 0.6 }}>
+              {copyrightProject}
+            </span>
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-subtle)', opacity: 0.5, marginTop: 4 }}>
+            v1.0 Alpha
+          </div>
         </Footer>
       </AntLayout>
     </div>

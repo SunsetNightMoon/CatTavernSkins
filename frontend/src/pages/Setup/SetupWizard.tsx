@@ -10,6 +10,10 @@ interface SetupData {
   dbName?: string;
   dbUser?: string;
   dbPassword?: string;
+  redisEnabled: boolean;
+  redisHost?: string;
+  redisPort?: number;
+  redisPassword?: string;
   mailHost: string;
   mailPort: number;
   mailUser: string;
@@ -25,9 +29,10 @@ const STEPS = [
   { number: 1, title: '欢迎' },
   { number: 2, title: '站点配置' },
   { number: 3, title: '数据库设置' },
-  { number: 4, title: '邮箱设置' },
-  { number: 5, title: '管理员账户' },
-  { number: 6, title: '确认' },
+  { number: 4, title: 'Redis 缓存' },
+  { number: 5, title: '邮箱设置' },
+  { number: 6, title: '管理员账户' },
+  { number: 7, title: '确认' },
 ];
 
 export default function SetupWizard() {
@@ -37,9 +42,14 @@ export default function SetupWizard() {
   const [animKey, setAnimKey] = useState(0);
   const [testingDb, setTestingDb] = useState(false);
   const [testingMail, setTestingMail] = useState(false);
+  const [testingRedis, setTestingRedis] = useState(false);
   const [data, setData] = useState<SetupData>({
     siteName: '',
     dbType: 'sqlite',
+    redisEnabled: false,
+    redisHost: 'localhost',
+    redisPort: 6379,
+    redisPassword: '',
     mailHost: 'smtp.163.com',
     mailPort: 465,
     mailUser: '',
@@ -70,9 +80,18 @@ export default function SetupWizard() {
       }
     }
     if (step === 4) {
-      fieldsToValidate.push('mailHost', 'mailPort', 'mailUser', 'mailPass', 'mailFrom');
+      // Redis 设置：启用时需要验证连接
+      if (data.redisEnabled) {
+        // 不在这里验证，让用户点"测试连接"按钮
+      }
+      setStep(5);
+      setAnimKey(k => k + 1);
+      return;
     }
     if (step === 5) {
+      fieldsToValidate.push('mailHost', 'mailPort', 'mailUser', 'mailPass', 'mailFrom');
+    }
+    if (step === 6) {
       fieldsToValidate.push('username', 'email', 'password', 'confirmPassword');
     }
 
@@ -152,11 +171,38 @@ export default function SetupWizard() {
     }
   };
 
+  const handleTestRedis = async () => {
+    const values = form.getFieldsValue();
+    setTestingRedis(true);
+    try {
+      const res = await fetch('/api/setup/test-redis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          redis_host: values.redisHost || data.redisHost,
+          redis_port: values.redisPort || data.redisPort,
+          redis_password: values.redisPassword || data.redisPassword,
+        }),
+      });
+      const body = await res.json().catch(() => ({ success: false, message: '未知错误' }));
+      if (body.success) {
+        message.success(body.message);
+      } else {
+        message.error(body.message);
+      }
+    } catch (e: any) {
+      message.error(e.message || '测试失败');
+    } finally {
+      setTestingRedis(false);
+    }
+  };
+
   const handleFinish = () => {
     setLoading(true);
     const payload: any = {
       site_name: data.siteName,
       db_type: data.dbType,
+      redis_enabled: data.redisEnabled,
       mail_host: data.mailHost,
       mail_port: data.mailPort,
       mail_user: data.mailUser,
@@ -172,6 +218,11 @@ export default function SetupWizard() {
       payload.db_name = data.dbName;
       payload.db_user = data.dbUser;
       payload.db_password = data.dbPassword;
+    }
+    if (data.redisEnabled) {
+      payload.redis_host = data.redisHost;
+      payload.redis_port = data.redisPort;
+      payload.redis_password = data.redisPassword;
     }
     fetch('/api/setup/complete', {
       method: 'POST',
@@ -400,8 +451,78 @@ export default function SetupWizard() {
           </>
         )}
 
-        {/* 步骤4：邮箱设置（网易邮箱模板） */}
+        {/* 步骤4：Redis 缓存设置 */}
         {step === 4 && (
+          <>
+            <h1 style={styles.title}>配置 Redis 缓存（可选）</h1>
+            <p style={styles.subtitle}>启用 Redis 可以提升网站访问速度，不启用则使用内存缓存。</p>
+            <Form form={form} layout="vertical" initialValues={{
+              redisEnabled: data.redisEnabled,
+              redisHost: data.redisHost,
+              redisPort: data.redisPort,
+              redisPassword: data.redisPassword,
+            }} style={{ width: '100%' }}>
+              <Form.Item label="启用 Redis 缓存" style={{ marginBottom: 24 }}>
+                <Radio.Group
+                  value={data.redisEnabled}
+                  onChange={(e) => setData((prev) => ({ ...prev, redisEnabled: e.target.value }))}
+                  style={{ color: '#fff' }}
+                >
+                  <Radio value={true} style={{ color: '#fff', marginRight: 32 }}>启用</Radio>
+                  <Radio value={false} style={{ color: '#fff' }}>不启用</Radio>
+                </Radio.Group>
+              </Form.Item>
+
+              {data.redisEnabled && (
+                <>
+                  <Form.Item
+                    label="Redis 主机"
+                    name="redisHost"
+                    rules={[{ required: true, message: '请输入 Redis 主机' }]}
+                    style={{ marginBottom: 20 }}
+                  >
+                    <Input placeholder="localhost" size="large" style={styles.input} />
+                  </Form.Item>
+                  <Form.Item
+                    label="端口"
+                    name="redisPort"
+                    rules={[{ required: true, message: '请输入端口' }]}
+                    style={{ marginBottom: 20 }}
+                  >
+                    <Input type="number" placeholder="6379" size="large" style={styles.input} />
+                  </Form.Item>
+                  <Form.Item
+                    label="密码（可选）"
+                    name="redisPassword"
+                    style={{ marginBottom: 20 }}
+                  >
+                    <Input.Password placeholder="留空表示无密码" size="large" style={styles.input} />
+                  </Form.Item>
+                  <div style={{ marginBottom: 20 }}>
+                    <button
+                      type="button"
+                      style={styles.testButton}
+                      onClick={handleTestRedis}
+                      disabled={testingRedis}
+                    >
+                      <ThunderboltOutlined style={{ marginRight: 6, fontSize: 12 }} />
+                      {testingRedis ? '测试中...' : '测试连接'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {!data.redisEnabled && (
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
+                  不启用 Redis 缓存，系统将使用内存缓存，重启后缓存清空。适合个人或小流量站点。
+                </p>
+              )}
+            </Form>
+          </>
+        )}
+
+        {/* 步骤5：邮箱设置（网易邮箱模板） */}
+        {step === 5 && (
           <>
             <h1 style={styles.title}>配置邮箱服务</h1>
             <p style={styles.subtitle}>用于发送验证邮件和密码重置邮件，已预填网易邮箱格式。</p>
@@ -469,8 +590,8 @@ export default function SetupWizard() {
           </>
         )}
 
-        {/* 步骤5：管理员账户 */}
-        {step === 5 && (
+        {/* 步骤6：管理员账户 */}
+        {step === 6 && (
           <>
             <h1 style={styles.title}>创建超级管理员账户</h1>
             <Form form={form} layout="vertical" style={{ width: '100%' }}>
@@ -531,8 +652,8 @@ export default function SetupWizard() {
           </>
         )}
 
-        {/* 步骤6：确认 */}
-        {step === 6 && (
+        {/* 步骤7：确认 */}
+        {step === 7 && (
           <>
             <h1 style={styles.title}>确认配置信息</h1>
             <p style={styles.subtitle}>请确认以下信息是否正确，点击"开始安装"完成配置。</p>
@@ -545,6 +666,8 @@ export default function SetupWizard() {
                   <div style={styles.confirmRow}><span style={styles.confirmLabel}>数据库名称</span><span style={styles.confirmValue}>{data.dbName}</span></div>
                 </>
               )}
+              <div style={{ height: 12 }} />
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>Redis 缓存</span><span style={styles.confirmValue}>{data.redisEnabled ? `启用 (${data.redisHost}:${data.redisPort})` : '不启用'}</span></div>
               <div style={{ height: 12 }} />
               <div style={styles.confirmRow}><span style={styles.confirmLabel}>SMTP 服务器</span><span style={styles.confirmValue}>{data.mailHost}:{data.mailPort}</span></div>
               <div style={styles.confirmRow}><span style={styles.confirmLabel}>发件人邮箱</span><span style={styles.confirmValue}>{data.mailFrom}</span></div>
@@ -566,7 +689,7 @@ export default function SetupWizard() {
             </button>
           )}
           <div style={{ flex: 1 }} />
-          {step < 6 ? (
+          {step < 7 ? (
             <button style={styles.primaryButton} onClick={goNext} disabled={loading}>
               下一步 <RightOutlined style={{ marginLeft: 6, fontSize: 12 }} />
             </button>

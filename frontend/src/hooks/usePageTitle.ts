@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSiteStore } from '../store/siteStore';
 
-const STORAGE_KEY = 'skin2-site-settings';
+const STORAGE_KEY = 'catTavernSkins-site-settings';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface CachedSettings {
@@ -49,7 +49,7 @@ function writePersistentCache(settings: CachedSettings) {
 }
 
 const defaultSettings: CachedSettings = {
-  title: 'Skin2',
+  title: 'CatTavernSkins',
   description: 'Minecraft Skin Server',
   lightBgImage: '',
   darkBgImage: '',
@@ -90,7 +90,7 @@ async function fetchSiteSettings(): Promise<CachedSettings> {
       if (res.ok) {
         const data = await res.json();
         cachedSettings = {
-          title: String(data.SITE_TITLE || 'Skin2'),
+          title: String(data.SITE_TITLE || 'CatTavernSkins'),
           description: String(data.SITE_DESCRIPTION || 'Minecraft Skin Server'),
           // 主题设置（向后兼容：darkBgImage 为空时回退到 HOMEPAGE_BG_IMAGE）
           lightBgImage: String(data.LIGHT_BG_IMAGE || ''),
@@ -121,7 +121,7 @@ async function fetchSiteSettings(): Promise<CachedSettings> {
  * @returns 当前站点标题（可用于页面内显示）
  */
 export function usePageTitle(pageTitle: string | null = null): string {
-  const [siteTitle, setSiteTitle] = useState<string>(cachedSettings?.title || 'Skin2');
+  const [siteTitle, setSiteTitle] = useState<string>(cachedSettings?.title || 'CatTavernSkins');
   const prevTitleRef = useRef<string>('');
   const {
     setTitle,

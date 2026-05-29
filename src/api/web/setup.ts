@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { SetupService } from '../../services/SetupService';
 import nodemailer from 'nodemailer';
+import { createClient, RedisClientType } from 'redis';
 import { Pool } from 'pg';
 import * as path from 'path';
 
@@ -135,9 +136,49 @@ router.post('/test-email', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/setup/test-redis
+ * 测试 Redis 连接
+ */
+router.post('/test-redis', async (req: Request, res: Response) => {
+  try {
+    const isSetup = await SetupService.isSetupCompleted();
+    if (isSetup) {
+      return res.status(403).json({ success: false, message: '系统已初始化，此端点不可用' });
+    }
+
+    const { redis_host, redis_port, redis_password } = req.body;
+
+    const host = redis_host || 'localhost';
+    const port = parseInt(redis_port || '6379');
+    const password = redis_password || undefined;
+
+    const client: RedisClientType = createClient({
+      socket: { host, port, connectTimeout: 3000 },
+      password,
+    });
+
+    try {
+      await client.connect();
+      await client.ping();
+      await client.quit();
+      return res.json({ success: true, message: 'Redis 连接成功' });
+    } catch (e: any) {
+      let msg = e.message || 'Redis 连接失败';
+      if (e.code === 'ECONNREFUSED') msg = '无法连接到 Redis 服务器，请检查主机和端口';
+      if (e.code === 'ERR_UNKNOWN') msg = 'Redis 认证失败，请检查密码';
+      return res.status(400).json({ success: false, message: msg });
+    }
+  } catch (error: any) {
+    console.error('[Setup] 测试 Redis 失败:', error);
+    res.status(500).json({ success: false, message: error.message || '测试失败' });
+  }
+});
+
+/**
  * POST /api/setup/complete
  * 完成安装（支持 SQLite / PostgreSQL 选择）
  * 字段：site_name, db_type, db_host, db_port, db_name, db_user, db_password,
+ *       redis_enabled, redis_host, redis_port, redis_password,
  *       mail_host, mail_port, mail_user, mail_pass, mail_from,
  *       admin_username, admin_email, admin_password
  */
@@ -151,6 +192,10 @@ router.post('/complete', async (req: Request, res: Response) => {
       db_name,
       db_user,
       db_password,
+      redis_enabled = false,
+      redis_host,
+      redis_port,
+      redis_password,
       mail_host,
       mail_port,
       mail_user,
@@ -191,6 +236,10 @@ router.post('/complete', async (req: Request, res: Response) => {
       db_name,
       db_user,
       db_password,
+      redis_enabled: redis_enabled === true || redis_enabled === 'true',
+      redis_host: redis_enabled ? (redis_host || 'localhost') : undefined,
+      redis_port: redis_enabled ? (redis_port ? Number(redis_port) : 6379) : undefined,
+      redis_password: redis_enabled ? (redis_password || undefined) : undefined,
       mail_host,
       mail_port: mail_port ? Number(mail_port) : 465,
       mail_user,

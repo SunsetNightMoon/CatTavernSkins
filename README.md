@@ -193,7 +193,7 @@ npm run migrate
 - 皮肤库（参考 NameMC 设计）
 - 3D 皮肤预览（Three.js）
 - 权限级别：私有 / 公开不可下载 / 公开可下载
-- 协议选择：CC 0/3.0/4.0、ARR、GPLv3
+- 协议选择：CC 0/3.0/4.0、ARR、AI CC0
 - 管理员层级：超级管理员（level 2）→ 管理员（level 1）→ 用户（level 0）
 - 用户 UID 系统（自增整数）
 - 图片验证（PNG + ≤1MB + 尺寸检查 + SHA-256 去重）

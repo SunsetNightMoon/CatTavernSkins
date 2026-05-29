@@ -154,7 +154,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
       })()
       setExtraButtons(buttons)
       form.setFieldsValue({
-        site_title: String(data.SITE_TITLE || 'Skin2'),
+        site_title: String(data.SITE_TITLE || 'CatTavernSkins'),
         site_description: String(data.SITE_DESCRIPTION || 'Minecraft Skin Server - 自定义你的游戏形象'),
         site_favicon: String(data.SITE_FAVICON || '/favicon.svg'),
         homepage_title_text: String(data.HOMEPAGE_TITLE_TEXT || '欢迎来到'),
@@ -228,7 +228,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
           name="site_title"
           rules={[{ required: true, message: '请输入站点标题' }]}
         >
-          <Input placeholder="Skin2" />
+          <Input placeholder="CatTavernSkins" />
         </Form.Item>
 
         <Form.Item
@@ -364,7 +364,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       const data = await res.json()
       form.setFieldsValue({
         light_bg_image: String(data.LIGHT_BG_IMAGE || ''),
-        dark_bg_image: String(data.DARK_BG_IMAGE || data.HOMEPAGE_BG_IMAGE || ''),
+        dark_bg_image: String(data.DARK_BG_IMAGE || ''),
         login_bg_image: String(data.LOGIN_BG_IMAGE || ''),
         login_embed_image: String(data.LOGIN_EMBED_IMAGE || ''),
         video_muted: String(data.VIDEO_MUTED || 'true').toLowerCase() === 'true',
@@ -376,8 +376,6 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       }
       if (data.DARK_BG_IMAGE) {
         setDarkBgPreview(data.DARK_BG_IMAGE);
-      } else if (data.HOMEPAGE_BG_IMAGE) {
-        setDarkBgPreview(data.HOMEPAGE_BG_IMAGE);
       }
       if (data.LOGIN_BG_IMAGE) {
         setLoginBgPreview(data.LOGIN_BG_IMAGE);
@@ -428,9 +426,9 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
   const handleUploadLightBg = async (file: File) => {
     const formData = new FormData();
-    formData.append('bgImage', file);
+    formData.append('image', file);
     try {
-      const res = await fetchWithAuth('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-theme-image?type=light-bg', {
         method: 'POST',
         body: formData,
       });
@@ -445,11 +443,26 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
     return false;
   };
 
+  const handleRemoveLightBg = async () => {
+    try {
+      const res = await fetchWithAuth('/api/admin/theme-image/light-bg', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.errorMessage || '删除失败');
+      }
+      setLightBgPreview('');
+      form.setFieldsValue({ light_bg_image: '' });
+      message.success('亮色背景图片已删除');
+    } catch (err: any) {
+      message.error(err.message || '删除失败');
+    }
+  };
+
   const handleUploadDarkBg = async (file: File) => {
     const formData = new FormData();
-    formData.append('bgImage', file);
+    formData.append('image', file);
     try {
-      const res = await fetchWithAuth('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-theme-image?type=dark-bg', {
         method: 'POST',
         body: formData,
       });
@@ -464,11 +477,26 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
     return false;
   };
 
+  const handleRemoveDarkBg = async () => {
+    try {
+      const res = await fetchWithAuth('/api/admin/theme-image/dark-bg', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.errorMessage || '删除失败');
+      }
+      setDarkBgPreview('');
+      form.setFieldsValue({ dark_bg_image: '' });
+      message.success('暗色背景图片已删除');
+    } catch (err: any) {
+      message.error(err.message || '删除失败');
+    }
+  };
+
   const handleUploadLoginBg = async (file: File) => {
     const formData = new FormData();
-    formData.append('bgImage', file);
+    formData.append('image', file);
     try {
-      const res = await fetchWithAuth('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-theme-image?type=login-bg', {
         method: 'POST',
         body: formData,
       });
@@ -483,11 +511,26 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
     return false;
   };
 
+  const handleRemoveLoginBg = async () => {
+    try {
+      const res = await fetchWithAuth('/api/admin/theme-image/login-bg', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.errorMessage || '删除失败');
+      }
+      setLoginBgPreview('');
+      form.setFieldsValue({ login_bg_image: '' });
+      message.success('登录背景图片已删除');
+    } catch (err: any) {
+      message.error(err.message || '删除失败');
+    }
+  };
+
   const handleUploadLoginEmbed = async (file: File) => {
     const formData = new FormData();
-    formData.append('bgImage', file);
+    formData.append('image', file);
     try {
-      const res = await fetchWithAuth('/api/admin/upload-bg', {
+      const res = await fetchWithAuth('/api/admin/upload-theme-image?type=login-embed', {
         method: 'POST',
         body: formData,
       });
@@ -500,6 +543,21 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       message.error(err.message || '上传失败');
     }
     return false;
+  };
+
+  const handleRemoveLoginEmbed = async () => {
+    try {
+      const res = await fetchWithAuth('/api/admin/theme-image/login-embed', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.errorMessage || '删除失败');
+      }
+      setLoginEmbedPreview('');
+      form.setFieldsValue({ login_embed_image: '' });
+      message.success('登录内嵌图片已删除');
+    } catch (err: any) {
+      message.error(err.message || '删除失败');
+    }
   };
 
   if (loadingSettings) {
@@ -523,8 +581,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
         {lightBgPreview && (
           <Form.Item label="亮色背景预览">
-            {isVideoFile(lightBgPreview) ? (
-              <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+              {isVideoFile(lightBgPreview) ? (
                 <video
                   src={lightBgPreview}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -533,6 +591,19 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                   muted={previewMuted}
                   playsInline
                 />
+              ) : (
+                <div style={{ width: '100%', height: '100%', backgroundImage: `url(${lightBgPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              )}
+              <Button
+                type="primary"
+                danger
+                size="small"
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+                onClick={handleRemoveLightBg}
+              >
+                移除
+              </Button>
+              {isVideoFile(lightBgPreview) && (
                 <Button
                   type="text"
                   shape="circle"
@@ -556,10 +627,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 >
                   {previewMuted ? '🔇' : '🔊'}
                 </Button>
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: 200, backgroundImage: `url(${lightBgPreview})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: 8, border: '1px solid #30363d' }} />
-            )}
+              )}
+            </div>
           </Form.Item>
         )}
 
@@ -577,8 +646,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
         {darkBgPreview && (
           <Form.Item label="暗色背景预览">
-            {isVideoFile(darkBgPreview) ? (
-              <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+              {isVideoFile(darkBgPreview) ? (
                 <video
                   src={darkBgPreview}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -587,6 +656,19 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                   muted={previewMuted}
                   playsInline
                 />
+              ) : (
+                <div style={{ width: '100%', height: '100%', backgroundImage: `url(${darkBgPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              )}
+              <Button
+                type="primary"
+                danger
+                size="small"
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+                onClick={handleRemoveDarkBg}
+              >
+                移除
+              </Button>
+              {isVideoFile(darkBgPreview) && (
                 <Button
                   type="text"
                   shape="circle"
@@ -610,10 +692,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 >
                   {previewMuted ? '🔇' : '🔊'}
                 </Button>
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: 200, backgroundImage: `url(${darkBgPreview})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: 8, border: '1px solid #30363d' }} />
-            )}
+              )}
+            </div>
           </Form.Item>
         )}
 
@@ -631,8 +711,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
         {loginBgPreview && (
           <Form.Item label="登录背景预览">
-            {isVideoFile(loginBgPreview) ? (
-              <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+              {isVideoFile(loginBgPreview) ? (
                 <video
                   src={loginBgPreview}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -641,6 +721,19 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                   muted={previewMuted}
                   playsInline
                 />
+              ) : (
+                <div style={{ width: '100%', height: '100%', backgroundImage: `url(${loginBgPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              )}
+              <Button
+                type="primary"
+                danger
+                size="small"
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+                onClick={handleRemoveLoginBg}
+              >
+                移除
+              </Button>
+              {isVideoFile(loginBgPreview) && (
                 <Button
                   type="text"
                   shape="circle"
@@ -664,10 +757,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 >
                   {previewMuted ? '🔇' : '🔊'}
                 </Button>
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: 200, backgroundImage: `url(${loginBgPreview})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: 8, border: '1px solid #30363d' }} />
-            )}
+              )}
+            </div>
           </Form.Item>
         )}
 
@@ -685,8 +776,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
         {loginEmbedPreview && (
           <Form.Item label="内嵌图片预览">
-            {isVideoFile(loginEmbedPreview) ? (
-              <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
+              {isVideoFile(loginEmbedPreview) ? (
                 <video
                   src={loginEmbedPreview}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -695,6 +786,19 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                   muted={previewMuted}
                   playsInline
                 />
+              ) : (
+                <div style={{ width: '100%', height: '100%', backgroundImage: `url(${loginEmbedPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              )}
+              <Button
+                type="primary"
+                danger
+                size="small"
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+                onClick={handleRemoveLoginEmbed}
+              >
+                移除
+              </Button>
+              {isVideoFile(loginEmbedPreview) && (
                 <Button
                   type="text"
                   shape="circle"
@@ -718,10 +822,8 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 >
                   {previewMuted ? '🔇' : '🔊'}
                 </Button>
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: 200, backgroundImage: `url(${loginEmbedPreview})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: 8, border: '1px solid #30363d' }} />
-            )}
+              )}
+            </div>
           </Form.Item>
         )}
 
@@ -1142,6 +1244,116 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 }
 
 /* ============================================================
+   版权设置卡片
+   ============================================================ */
+function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+  const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+  const [loadingSettings, setLoadingSettings] = useState(true)
+
+  const loadSettings = async () => {
+    setLoadingSettings(true)
+    try {
+      const res = await fetchWithAuth('/api/admin/settings', {
+      })
+      if (!res.ok) throw new Error('读取失败')
+      const data = await res.json()
+      form.setFieldsValue({
+        copyright_text: data.COPYRIGHT_TEXT || '© 2024 Minecraft Skin Server',
+        copyright_beian: data.COPYRIGHT_BEIAN || '',
+      })
+    } catch (err: any) {
+      message.error(err.message || '读取设置失败')
+    } finally {
+      setLoadingSettings(false)
+    }
+  }
+
+  useEffect(() => { loadSettings() }, [])
+
+  const handleSave = async (values: any) => {
+    setLoading(true)
+    try {
+      const payload = {
+        copyright_text: values.copyright_text || '',
+        copyright_beian: values.copyright_beian || '',
+      }
+      const res = await fetchWithAuth('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.errorMessage || '保存失败')
+      }
+      message.success('版权设置已保存')
+      if (autoApply) {
+        useSiteStore.getState().loadSettings()
+      }
+    } catch (err: any) {
+      message.error(err.message || '保存失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loadingSettings) {
+    return <Card style={{ marginBottom: 16 }}><Spin /></Card>
+  }
+
+  return (
+    <Card title="版权设置" style={{ marginBottom: 16 }}>
+      <Form form={form} layout="vertical" onFinish={handleSave}>
+        <Form.Item
+          label="自定义版权标识"
+          name="copyright_text"
+          rules={[{ required: true, message: '请输入版权标识' }]}
+          tooltip="显示在页脚的主版权信息，支持 HTML"
+        >
+          <Input placeholder="© 2024 Minecraft Skin Server" />
+        </Form.Item>
+
+        <Form.Item
+          label="备案信息（可选）"
+          name="copyright_beian"
+          tooltip="ICP 备案号等信息，留空则不显示"
+        >
+          <Input placeholder="例：京ICP备xxxxxxxx号-x" />
+        </Form.Item>
+
+        <Form.Item>
+          <div style={{ 
+            fontSize: 13, 
+            color: '#faad14', 
+            lineHeight: 1.8,
+            background: 'rgba(250,173,20,0.1)',
+            border: '1px solid rgba(250,173,20,0.3)',
+            borderRadius: 8,
+            padding: '12px 16px',
+          }}>
+            ⚠️ <strong>项目版权标识（不可私自更改）</strong>
+            <br />
+            当前值：<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>Powered by CatTavernSkins</code>
+            <br />
+            此标识为项目硬编码版权声明，<strong>不可通过管理面板更改</strong>。
+            <br />
+            私自移除或修改此标识将违反项目开源协议。
+          </div>
+        </Form.Item>
+
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            保存版权设置
+          </Button>
+          <GlobalAutoApplySwitch checked={autoApply} onChange={onAutoApplyChange} />
+        </Form.Item>
+      </Form>
+    </Card>
+  )
+}
+
+/* ============================================================
    主组件
    ============================================================ */
 export function SystemSettings() {
@@ -1172,6 +1384,7 @@ export function SystemSettings() {
       <SiteSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
       <ThemeSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
       <EmailSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
+      <CopyrightSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
     </div>
   )
 }

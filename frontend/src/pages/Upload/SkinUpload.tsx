@@ -14,7 +14,7 @@ const LICENSE_OPTIONS = [
   { value: 'CC_BY-NC_3.0', label: 'CC BY-NC 3.0 - 署名-非商业性使用' },
   { value: 'CC_BY-NC_4.0', label: 'CC BY-NC 4.0 - 署名-非商业性使用' },
   { value: 'ARR', label: 'ARR - 保留所有权利' },
-  { value: 'GPLv3', label: 'GPLv3 - GNU通用公共许可证' },
+  { value: 'AI_CC0', label: 'AI CC0 - AI生成内容公有领域' },
   { value: 'Custom', label: '自定义协议' },
 ]
 
@@ -41,6 +41,15 @@ function SkinTab() {
   const [modelType, setModelType] = useState<'default' | 'slim'>('default')
   const [loading, setLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [selectedLicense, setSelectedLicense] = useState<string>('')
+
+  // 选择公有领域协议时，禁止"公开不可下载"，自动切换到"公开可下载"
+  useEffect(() => {
+    const isPublicDomain = selectedLicense === 'CC0_1.0' || selectedLicense === 'AI_CC0'
+    if (isPublicDomain && form.getFieldValue('permission_level') === 'public_no_download') {
+      form.setFieldValue('permission_level', 'public_downloadable')
+    }
+  }, [selectedLicense, form])
 
   const { width: vw } = useViewportSize()
   const viewerSize = useMemo(() => {
@@ -156,14 +165,32 @@ function SkinTab() {
             </Form.Item>
 
             <Form.Item label="协议类型" name="license_type" rules={[{ required: true, message: '请选择协议类型' }]}>
-              <Select options={LICENSE_OPTIONS} placeholder="请选择皮肤协议" />
+              <Select
+                options={LICENSE_OPTIONS}
+                placeholder="请选择皮肤协议"
+                onChange={value => setSelectedLicense(value)}
+              />
             </Form.Item>
 
+            <Alert
+              type="warning"
+              showIcon
+              message="关于 AI 绘制皮肤"
+              description="如果您的皮肤是使用 AI（如 Midjourney、DALL-E、Stable Diffusion、LUMEN 等）绘制的，由于无法判断人类作者的归属权，请选择「AI CC0」协议。CC0 1.0 仅适用于人类创作的公有领域作品。"
+              style={{ marginBottom: 16 }}
+            />
+
             <Form.Item label="权限设置" name="permission_level" rules={[{ required: true, message: '请选择权限级别' }]} initialValue="private">
-              <Radio.Group>
-                {PERMISSION_OPTIONS.map(opt => (
-                  <Radio key={opt.value} value={opt.value}>{opt.label}</Radio>
-                ))}
+              <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {PERMISSION_OPTIONS.map(opt => {
+                  const isPublicDomain = selectedLicense === 'CC0_1.0' || selectedLicense === 'AI_CC0'
+                  const disabled = isPublicDomain && opt.value === 'public_no_download'
+                  return (
+                    <Radio key={opt.value} value={opt.value} disabled={disabled}>
+                      {opt.label}{disabled && '（公有领域禁止限制下载）'}
+                    </Radio>
+                  )
+                })}
               </Radio.Group>
             </Form.Item>
 
@@ -185,6 +212,15 @@ function CapeTab() {
   const [file, setFile] = useState<UploadFile | null>(null)
   const [loading, setLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [selectedLicense, setSelectedLicense] = useState<string>('ARR')
+
+  // 选择公有领域协议时，禁止"公开不可下载"，自动切换到"公开可下载"
+  useEffect(() => {
+    const isPublicDomain = selectedLicense === 'CC0_1.0' || selectedLicense === 'AI_CC0'
+    if (isPublicDomain && form.getFieldValue('permission_level') === 'public_no_download') {
+      form.setFieldValue('permission_level', 'public_downloadable')
+    }
+  }, [selectedLicense, form])
 
   const { width: vw } = useViewportSize()
   const viewerSize = useMemo(() => {
@@ -282,14 +318,32 @@ function CapeTab() {
             </Form.Item>
 
             <Form.Item label="协议类型" name="license_type" initialValue="ARR">
-              <Select options={LICENSE_OPTIONS} placeholder="请选择披风协议" />
+              <Select
+                options={LICENSE_OPTIONS}
+                placeholder="请选择披风协议"
+                onChange={value => setSelectedLicense(value)}
+              />
             </Form.Item>
 
+            <Alert
+              type="warning"
+              showIcon
+              message="关于 AI 绘制披风"
+              description="如果您的披风是使用 AI（如 Midjourney、DALL-E、Stable Diffusion、LUMEN 等）绘制的，由于无法判断人类作者的归属权，请选择「AI CC0」协议。CC0 1.0 仅适用于人类创作的公有领域作品。"
+              style={{ marginBottom: 16 }}
+            />
+
             <Form.Item label="权限设置" name="permission_level" initialValue="private">
-              <Radio.Group>
-                {PERMISSION_OPTIONS.map(opt => (
-                  <Radio key={opt.value} value={opt.value}>{opt.label}</Radio>
-                ))}
+              <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {PERMISSION_OPTIONS.map(opt => {
+                  const isPublicDomain = selectedLicense === 'CC0_1.0' || selectedLicense === 'AI_CC0'
+                  const disabled = isPublicDomain && opt.value === 'public_no_download'
+                  return (
+                    <Radio key={opt.value} value={opt.value} disabled={disabled}>
+                      {opt.label}{disabled && '（公有领域禁止限制下载）'}
+                    </Radio>
+                  )
+                })}
               </Radio.Group>
             </Form.Item>
 

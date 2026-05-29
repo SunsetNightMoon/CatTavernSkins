@@ -25,6 +25,11 @@ interface SiteState {
   lightBgOverlayOpacity: number
   darkBgOverlayOpacity: number
 
+  // 版权设置
+  copyrightText: string
+  copyrightBeian: string
+  copyrightProject: string
+
   // Actions
   setTitle: (title: string) => void
   setDescription: (description: string) => void
@@ -37,13 +42,16 @@ interface SiteState {
   setVideoMuted: (muted: boolean) => void
   setLightBgOverlayOpacity: (opacity: number) => void
   setDarkBgOverlayOpacity: (opacity: number) => void
+  setCopyrightText: (text: string) => void
+  setCopyrightBeian: (beian: string) => void
+  setCopyrightProject: (project: string) => void
   loadSettings: () => Promise<void>
 }
 
 export const useSiteStore = create<SiteState>()(
   persist(
     (set) => ({
-      title: 'Skin2',
+      title: 'CatTavernSkins',
       description: 'Minecraft Skin Server',
 
       theme: 'dark', // 默认暗色
@@ -56,6 +64,11 @@ export const useSiteStore = create<SiteState>()(
 
       lightBgOverlayOpacity: 30,
       darkBgOverlayOpacity: 30,
+
+      // 版权设置
+      copyrightText: '© 2024 Minecraft Skin Server',
+      copyrightBeian: '',
+      copyrightProject: 'Powered by CatTavernSkins',
 
       setTitle: (title) => set({ title }),
       setDescription: (description) => set({ description }),
@@ -70,13 +83,16 @@ export const useSiteStore = create<SiteState>()(
       setVideoMuted: (muted) => set({ videoMuted: muted }),
       setLightBgOverlayOpacity: (opacity) => set({ lightBgOverlayOpacity: opacity }),
       setDarkBgOverlayOpacity: (opacity) => set({ darkBgOverlayOpacity: opacity }),
+      setCopyrightText: (text) => set({ copyrightText: text }),
+      setCopyrightBeian: (beian) => set({ copyrightBeian: beian }),
+      setCopyrightProject: (project) => set({ copyrightProject: project }),
       loadSettings: async () => {
         try {
           const res = await fetch('/api/settings/public')
           if (!res.ok) return
           const data = await res.json()
           set({
-            title: data.SITE_TITLE || 'Skin2',
+            title: data.SITE_TITLE || 'CatTavernSkins',
             description: data.SITE_DESCRIPTION || 'Minecraft Skin Server',
             theme: data.THEME === 'light' ? 'light' : 'dark',
             lightBgImage: data.LIGHT_BG_IMAGE || '',
@@ -86,6 +102,10 @@ export const useSiteStore = create<SiteState>()(
             videoMuted: String(data.VIDEO_MUTED || 'true').toLowerCase() === 'true',
             lightBgOverlayOpacity: parseInt(data.LIGHT_BG_OVERLAY_OPACITY) || 30,
             darkBgOverlayOpacity: parseInt(data.DARK_BG_OVERLAY_OPACITY) || 30,
+            // 版权设置
+            copyrightText: data.COPYRIGHT_TEXT || '© 2024 Minecraft Skin Server',
+            copyrightBeian: data.COPYRIGHT_BEIAN || '',
+            copyrightProject: data.COPYRIGHT_PROJECT || 'Powered by CatTavernSkins',
           })
         } catch {
           // 静默失败，不打扰用户

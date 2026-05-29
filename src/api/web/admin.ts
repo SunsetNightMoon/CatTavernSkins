@@ -14,10 +14,10 @@ import fs from 'fs/promises';
 
 const router = Router();
 
-// Multer 配置（用于背景图片上传）
+// Multer 配置（用于首页背景图片上传 —— 存到 bg/homepage/ 以完善文件夹分类）
 const bgStorage = multer.diskStorage({
   destination: async (_req, _file, cb) => {
-    const uploadDir = path.resolve(process.cwd(), 'public', 'uploads', 'bg');
+    const uploadDir = path.resolve(process.cwd(), 'public', 'uploads', 'bg', 'homepage');
     await fs.mkdir(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
@@ -656,6 +656,9 @@ export const SETTINGS_MAP: Record<string, string> = {
   video_muted: 'VIDEO_MUTED',
   // 网站图标
   site_favicon: 'SITE_FAVICON',
+  // 版权设置
+  copyright_text: 'COPYRIGHT_TEXT',
+  copyright_beian: 'COPYRIGHT_BEIAN',
 };
 
 export const SETTINGS_DEFAULTS: Record<string, string> = {
@@ -670,7 +673,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   SMTP_FROM: '',
   SMTP_FROM_NAME: '',
   // 站点自定义设置默认值
-  SITE_TITLE: 'Skin2',
+  SITE_TITLE: 'CatTavernSkins',
   SITE_DESCRIPTION: 'Minecraft Skin Server - 自定义你的游戏形象',
   SITE_FAVICON: '/favicon.svg',
   HOMEPAGE_TITLE_TEXT: '欢迎来到',
@@ -689,6 +692,11 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   LOGIN_EMBED_IMAGE: '',
   // WebM 视频静音默认值（默认静音）
   VIDEO_MUTED: 'true',
+  // 版权设置默认值
+  COPYRIGHT_TEXT: '© 2024 Minecraft Skin Server',
+  COPYRIGHT_BEIAN: '',
+  // 项目版权标识（硬编码，不可通过管理面板更改）
+  COPYRIGHT_PROJECT: 'Powered by CatTavernSkins',
 };
 
 /**
@@ -1106,9 +1114,189 @@ router.post('/users/:id/send-verification', requireAuth, requireAdmin, async (re
   }
 });
 
+// 主题图片独立存储配置（4个独立目录，互不干扰）
+function makeThemeStorage(subDir: string) {
+  return multer.diskStorage({
+    destination: async (_req, _file, cb) => {
+      const uploadDir = path.resolve(process.cwd(), 'public', 'uploads', 'theme', subDir);
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const name = `theme-${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+      cb(null, name);
+    },
+  });
+}
+
+const uploadThemeLightBg = multer({ storage: makeThemeStorage('light-bg'), limits: { fileSize: 50 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  cb(null, ALLOWED_BG_EXTS.includes(ext));
+} });
+const uploadThemeDarkBg = multer({ storage: makeThemeStorage('dark-bg'), limits: { fileSize: 50 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  cb(null, ALLOWED_BG_EXTS.includes(ext));
+} });
+const uploadThemeLoginBg = multer({ storage: makeThemeStorage('login-bg'), limits: { fileSize: 50 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  cb(null, ALLOWED_BG_EXTS.includes(ext));
+} });
+const uploadThemeLoginEmbed = multer({ storage: makeThemeStorage('login-embed'), limits: { fileSize: 50 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  cb(null, ALLOWED_BG_EXTS.includes(ext));
+} });
+
+// 主题图片类型 → .env 键名 映射
+const THEME_IMAGE_ENV_KEY: Record<string, string> = {
+  'light-bg': 'LIGHT_BG_IMAGE',
+  'dark-bg': 'DARK_BG_IMAGE',
+  'login-bg': 'LOGIN_BG_IMAGE',
+  'login-embed': 'LOGIN_EMBED_IMAGE',
+};
+
+/**
+ * POST /api/admin/upload-theme-image?type=light-bg|dark-bg|login-bg|login-embed
+ * 上传主题图片到独立目录，上传前删除旧文件
+ */
+router.post('/upload-theme-image', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const type = req.query.type as string;
+  if (!THEME_IMAGE_ENV_KEY[type]) {
+    return res.status(400).json({ error: 'BadRequest', errorMessage: '无效的 type 参数，必须是 light-bg、dark-bg、login-bg、login-embed 之一' });
+  }
+
+  // 根据 type 选择对应的 multer 中间件
+  const uploader =
+    type === 'light-bg' ? uploadThemeLightBg :
+    type === 'dark-bg' ? uploadThemeDarkBg :
+    type === 'login-bg' ? uploadThemeLoginBg :
+    uploadThemeLoginEmbed;
+
+  const fieldName = 'image'; // 前端统一用 image 字段名
+
+  uploader.single(fieldName)(req, res, async (err: any) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: 'FileTooLarge', errorMessage: '文件大小超过限制（最大 50MB）' });
+      }
+      return res.status(400).json({ error: 'UploadError', errorMessage: err.message });
+    }
+    if (err) {
+      return res.status(400).json({ error: 'UploadError', errorMessage: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'BadRequest', errorMessage: '未上传文件' });
+    }
+
+    try {
+      const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+      const relativePath = `/uploads/theme/${type}/${req.file.filename}`;
+      const fullUrl = `${baseUrl}${relativePath}`;
+      const envKey = THEME_IMAGE_ENV_KEY[type];
+
+      // 读取当前 .env，删除旧文件
+      const envPath = path.resolve(process.cwd(), '.env');
+      const content = await fs.readFile(envPath, 'utf-8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith(`${envKey}=`)) {
+          const oldValue = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+          // 如果是本地上传的文件（路径包含 /uploads/theme/ 或旧路径 /uploads/bg/），则删除旧文件
+          if (oldValue && (oldValue.includes('/uploads/theme/') || oldValue.includes('/uploads/bg/'))) {
+            // 正确解析文件路径：提取 /uploads/ 之后的相对路径，避免 Windows 上将 /uploads/ 误判为绝对路径
+            const urlPath = oldValue.substring(oldValue.indexOf('/uploads/'));
+            const relativePath = urlPath.startsWith('/') ? urlPath.slice(1) : urlPath;
+            const oldFilePath = path.resolve(process.cwd(), 'public', relativePath);
+            await fs.unlink(oldFilePath).catch(() => {});
+          }
+          break;
+        }
+      }
+
+      // 更新 .env
+      let updated = false;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim().startsWith(`${envKey}=`)) {
+          lines[i] = `${envKey}=${fullUrl}`;
+          process.env[envKey] = fullUrl;
+          updated = true;
+          break;
+        }
+      }
+      if (!updated) {
+        lines.push(`${envKey}=${fullUrl}`);
+        process.env[envKey] = fullUrl;
+      }
+
+      await fs.writeFile(envPath, lines.join('\n'), 'utf-8');
+
+      res.json({ message: '主题图片已上传并保存', url: fullUrl });
+    } catch (error: any) {
+      console.error('Upload theme image error:', error);
+      res.status(500).json({ error: 'InternalServerError', errorMessage: '上传失败' });
+    }
+  });
+});
+
+/**
+ * DELETE /api/admin/theme-image/:type
+ * 删除主题图片文件并清除 .env 对应字段
+ */
+router.delete('/theme-image/:type', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const type = req.params.type;
+    if (!THEME_IMAGE_ENV_KEY[type]) {
+      return res.status(400).json({ error: 'BadRequest', errorMessage: '无效的 type 参数' });
+    }
+
+    const envKey = THEME_IMAGE_ENV_KEY[type];
+    const envPath = path.resolve(process.cwd(), '.env');
+    const content = await fs.readFile(envPath, 'utf-8');
+    const lines = content.split('\n');
+    let oldValue = '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(`${envKey}=`)) {
+        oldValue = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+        break;
+      }
+    }
+
+    // 删除本地文件（兼容新路径 /uploads/theme/ 和旧路径 /uploads/bg/）
+    if (oldValue && (oldValue.includes('/uploads/theme/') || oldValue.includes('/uploads/bg/'))) {
+      const urlPath = oldValue.substring(oldValue.indexOf('/uploads/'));
+      const relativePath = urlPath.startsWith('/') ? urlPath.slice(1) : urlPath;
+      const filePath = path.resolve(process.cwd(), 'public', relativePath);
+      await fs.unlink(filePath).catch(() => {});
+    }
+
+    // 清除 .env 字段（设为空字符串）
+    let updated = false;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().startsWith(`${envKey}=`)) {
+        lines[i] = `${envKey}=`;
+        process.env[envKey] = '';
+        updated = true;
+        break;
+      }
+    }
+
+    if (updated) {
+      await fs.writeFile(envPath, lines.join('\n'), 'utf-8');
+    }
+
+    res.json({ message: '主题图片已删除' });
+  } catch (error: any) {
+    console.error('Delete theme image error:', error);
+    res.status(500).json({ error: 'InternalServerError', errorMessage: '删除失败' });
+  }
+});
+
 /**
  * POST /api/admin/upload-bg
- * 上传首页背景图片（管理员）
+ * 上传首页背景图片（管理员）—— 保留兼容旧逻辑
  */
 router.post('/upload-bg', requireAuth, requireAdmin, (req: Request, res: Response, next: NextFunction) => {
   uploadBg.single('bgImage')(req, res, (err: any) => {
@@ -1131,7 +1319,7 @@ router.post('/upload-bg', requireAuth, requireAdmin, (req: Request, res: Respons
 
     // 构建可访问的URL路径
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-    const relativePath = `/uploads/bg/${req.file.filename}`;
+    const relativePath = `/uploads/bg/homepage/${req.file.filename}`;
     const fullUrl = `${baseUrl}${relativePath}`;
 
     // 自动更新环境变量中的背景图片设置
@@ -1142,6 +1330,16 @@ router.post('/upload-bg', requireAuth, requireAdmin, (req: Request, res: Respons
     const lines = content.split('\n');
     const envKey = 'HOMEPAGE_BG_IMAGE';
     let updated = false;
+    let oldValue = '';
+
+    // 先读取旧值，供后续删除使用
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(`${envKey}=`)) {
+        oldValue = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+        break;
+      }
+    }
 
     for (let i = 0; i < lines.length; i++) {
       const trimmed = lines[i].trim();
@@ -1160,6 +1358,21 @@ router.post('/upload-bg', requireAuth, requireAdmin, (req: Request, res: Respons
 
     await fs.writeFile(envPath, lines.join('\n'), 'utf-8');
 
+    // 删除旧文件（兼容 /uploads/theme/ 和 /uploads/bg/ 路径）
+    if (oldValue && (oldValue.includes('/uploads/theme/') || oldValue.includes('/uploads/bg/'))) {
+      try {
+        const urlPath = oldValue.substring(oldValue.indexOf('/uploads/'));
+        const relativePath = urlPath.startsWith('/') ? urlPath.slice(1) : urlPath;
+        const oldFilePath = path.resolve(process.cwd(), 'public', relativePath);
+        await fs.unlink(oldFilePath);
+        console.log(`[upload-bg] 已删除旧文件: ${oldFilePath}`);
+      } catch (e: any) {
+        if (e.code !== 'ENOENT') {
+          console.warn(`[upload-bg] 删除旧文件失败:`, e.message);
+        }
+      }
+    }
+
     res.json({
       message: '背景图片已上传并保存',
       url: fullUrl,
@@ -1170,4 +1383,186 @@ router.post('/upload-bg', requireAuth, requireAdmin, (req: Request, res: Respons
   }
 });
 
+
+
+/**
+ * 设置皮肤 AI 生成标记（等级 1+ 管理员）
+ */
+router.post('/skins/:id/ai-generated', requireAuth, requireAdmin, async (req: any, res: any, next: any) => {
+  try {
+    const adminLevel = req.user.level ?? 0;
+    if (adminLevel < 1) return res.status(403).json({ error: 'Forbidden', errorMessage: '需要管理员权限' });
+    const isAi = req.body.is_ai_generated === true;
+    await SkinModel.setAiGenerated(req.params.id, isAi);
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+/**
+ * 设置皮肤管理员警告（仅等级 2 超级管理员）
+ */
+router.post('/skins/:id/warning', requireAuth, requireAdmin, async (req: any, res: any) => {
+  try {
+    const adminLevel = req.user.level ?? 0;
+    if (adminLevel < 2) return res.status(403).json({ error: 'Forbidden', errorMessage: '需要超级管理员权限' });
+    const warning = req.body.warning;
+    if (!warning) return res.status(400).json({ error: 'Bad Request', errorMessage: '警告内容不能为空' });
+    await SkinModel.setAdminWarning(req.params.id, warning, adminLevel);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal Server Error', errorMessage: error.message });
+  }
+});
+
+/**
+ * 移除皮肤管理员警告（等级 >= warning_set_by_level）
+ */
+router.delete('/skins/:id/warning', requireAuth, requireAdmin, async (req: any, res: any, next: any) => {
+  try {
+    const adminLevel = req.user.level ?? 0;
+    const ok = await SkinModel.removeAdminWarning(req.params.id, adminLevel);
+    if (!ok) return res.status(403).json({ error: 'Forbidden', errorMessage: '无权移除该警告' });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+/**
+ * 设置披风 AI 生成标记（等级 1+ 管理员）
+ */
+router.post('/capes/:id/ai-generated', requireAuth, requireAdmin, async (req: any, res: any, next: any) => {
+  try {
+    const adminLevel = req.user.level ?? 0;
+    if (adminLevel < 1) return res.status(403).json({ error: 'Forbidden', errorMessage: '需要管理员权限' });
+    const isAi = req.body.is_ai_generated === true;
+    await CapeModel.setAiGenerated(req.params.id, isAi);
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+/**
+ * 设置披风管理员警告（仅等级 2 超级管理员）
+ */
+router.post('/capes/:id/warning', requireAuth, requireAdmin, async (req: any, res: any) => {
+  try {
+    const adminLevel = req.user.level ?? 0;
+    if (adminLevel < 2) return res.status(403).json({ error: 'Forbidden', errorMessage: '需要超级管理员权限' });
+    const warning = req.body.warning;
+    if (!warning) return res.status(400).json({ error: 'Bad Request', errorMessage: '警告内容不能为空' });
+    await CapeModel.setAdminWarning(req.params.id, warning, adminLevel);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Internal Server Error', errorMessage: error.message });
+  }
+});
+
+/**
+ * 移除披风管理员警告（等级 >= warning_set_by_level）
+ */
+router.delete('/capes/:id/warning', requireAuth, requireAdmin, async (req: any, res: any, next: any) => {
+  try {
+    const adminLevel = req.user.level ?? 0;
+    const ok = await CapeModel.removeAdminWarning(req.params.id, adminLevel);
+    if (!ok) return res.status(403).json({ error: 'Forbidden', errorMessage: '无权移除该警告' });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
 export default router;
+
+// ============================================================
+// 启动迁移：将 bg/ 中的旧文件迁移到分类文件夹
+// ============================================================
+async function migrateThemeImages() {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const envPath = path.resolve(process.cwd(), '.env');
+    const content = await fs.readFile(envPath, 'utf-8');
+    const lines = content.split('\n');
+    let changed = false;
+
+    // 迁移主题图片（light-bg, dark-bg, login-bg, login-embed）
+    for (const [type, envKey] of Object.entries(THEME_IMAGE_ENV_KEY)) {
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith(`${envKey}=`)) {
+          const value = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+          // 只处理指向旧 bg/ 路径的值
+          if (value && value.includes('/uploads/bg/') && !value.includes('/uploads/theme/')) {
+            const fileName = value.substring(value.lastIndexOf('/') + 1);
+            const oldPath = path.resolve(process.cwd(), 'public', 'uploads', 'bg', fileName);
+            const newDir = path.resolve(process.cwd(), 'public', 'uploads', 'theme', type);
+            await fs.mkdir(newDir, { recursive: true });
+            const newPath = path.join(newDir, fileName);
+            try {
+              await fs.rename(oldPath, newPath);
+              const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+              const newUrl = `${baseUrl}/uploads/theme/${type}/${fileName}`;
+              for (let i = 0; i < lines.length; i++) {
+                if (lines[i].trim().startsWith(`${envKey}=`)) {
+                  lines[i] = `${envKey}=${newUrl}`;
+                  process.env[envKey] = newUrl;
+                  break;
+                }
+              }
+              changed = true;
+              console.log(`[migrate] ${envKey}: ${fileName} → theme/${type}/`);
+            } catch (e: any) {
+              // 文件可能不存在，忽略
+              if (e.code !== 'ENOENT') {
+                console.warn(`[migrate] 迁移失败 ${oldPath}:`, e.message);
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // 迁移 HOMEPAGE_BG_IMAGE 到 bg/homepage/
+    const homepageKey = 'HOMEPAGE_BG_IMAGE';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(`${homepageKey}=`)) {
+        const value = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+        if (value && value.includes('/uploads/bg/') && !value.includes('/uploads/bg/homepage/')) {
+          const fileName = value.substring(value.lastIndexOf('/') + 1);
+          const oldPath = path.resolve(process.cwd(), 'public', 'uploads', 'bg', fileName);
+          const newDir = path.resolve(process.cwd(), 'public', 'uploads', 'bg', 'homepage');
+          await fs.mkdir(newDir, { recursive: true });
+          const newPath = path.join(newDir, fileName);
+          try {
+            await fs.rename(oldPath, newPath);
+            const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+            const newUrl = `${baseUrl}/uploads/bg/homepage/${fileName}`;
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].trim().startsWith(`${homepageKey}=`)) {
+                lines[i] = `${homepageKey}=${newUrl}`;
+                process.env[homepageKey] = newUrl;
+                break;
+              }
+            }
+            changed = true;
+            console.log(`[migrate] ${homepageKey}: ${fileName} → bg/homepage/`);
+          } catch (e: any) {
+            if (e.code !== 'ENOENT') {
+              console.warn(`[migrate] 迁移失败 ${oldPath}:`, e.message);
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    if (changed) {
+      await fs.writeFile(envPath, lines.join('\n'), 'utf-8');
+      console.log('[migrate] .env 已更新');
+    }
+  } catch (error: any) {
+    console.error('[migrate] 主题图片迁移出错:', error.message);
+  }
+}
+
+// 启动时执行迁移（不阻塞启动）
+migrateThemeImages().catch(() => {});
+

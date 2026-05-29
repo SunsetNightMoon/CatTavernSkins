@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS capes (
     width INTEGER NOT NULL DEFAULT 22,
     height INTEGER NOT NULL DEFAULT 17,
     description TEXT,
-    license_type TEXT DEFAULT 'ARR' CHECK (license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'GPLv3', 'Custom')),
+    license_type TEXT DEFAULT 'ARR' CHECK (license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'AI_CC0', 'Custom')),
     permission_level TEXT DEFAULT 'private' CHECK (permission_level IN ('private', 'public_no_download', 'public_downloadable')),
     is_public INTEGER DEFAULT 0,
     is_downloadable INTEGER DEFAULT 0,

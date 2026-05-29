@@ -23,6 +23,9 @@ export interface Cape {
   download_count: number;
   view_count: number;
   created_at: Date;
+  is_ai_generated?: boolean;
+  admin_warning?: string | null;
+  warning_set_by_level?: number | null;
 }
 
 export interface CreateCapeDTO {
@@ -251,5 +254,42 @@ export class CapeModel {
    */
   static async incrementViewCount(id: string): Promise<void> {
     await DB.query('UPDATE capes SET view_count = view_count + 1 WHERE id = $1', [id]);
+  }
+
+  /**
+   * 设置 AI 生成标记（等级 1+ 管理员）
+   */
+  static async setAiGenerated(id: string, isAiGenerated: boolean): Promise<void> {
+    await DB.query(
+      'UPDATE capes SET is_ai_generated = $1 WHERE id = $2',
+      [isAiGenerated ? 1 : 0, id]
+    );
+  }
+
+  /**
+   * 设置管理员警告（仅等级 2 超级管理员）
+   * 设置后等级 1 管理员无法移除
+   */
+  static async setAdminWarning(id: string, warning: string, adminLevel: number): Promise<void> {
+    if (adminLevel < 2) throw new Error('需要超级管理员权限');
+    await DB.query(
+      'UPDATE capes SET admin_warning = $1, warning_set_by_level = $2 WHERE id = $3',
+      [warning, adminLevel, id]
+    );
+  }
+
+  /**
+   * 移除管理员警告（仅等级 >= warning_set_by_level 的管理员）
+   */
+  static async removeAdminWarning(id: string, adminLevel: number): Promise<boolean> {
+    const result = await DB.query('SELECT warning_set_by_level FROM capes WHERE id = $1', [id]);
+    if (!result.rows[0] || !result.rows[0].warning_set_by_level) return true;
+    const setByLevel = result.rows[0].warning_set_by_level;
+    if (adminLevel < setByLevel) return false;
+    await DB.query(
+      'UPDATE capes SET admin_warning = NULL, warning_set_by_level = NULL WHERE id = $1',
+      [id]
+    );
+    return true;
   }
 }

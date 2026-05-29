@@ -103,6 +103,7 @@ export class SetupService {
   /**
    * 完成安装
    * 支持 SQLite / PostgreSQL 选择
+   * 支持 Redis 可选启用
    */
   static async completeSetup(config: {
     site_name?: string
@@ -112,6 +113,10 @@ export class SetupService {
     db_name?: string
     db_user?: string
     db_password?: string
+    redis_enabled?: boolean
+    redis_host?: string
+    redis_port?: number
+    redis_password?: string
     mail_host?: string
     mail_port?: number
     mail_user?: string
@@ -168,6 +173,13 @@ export class SetupService {
       JWT_SECRET: require('crypto').randomBytes(32).toString('hex'),
       SITE_TITLE: config.site_name || 'Minecraft Skin Server',
       SITE_DESCRIPTION: 'Minecraft Skin Server',
+      REDIS_ENABLED: config.redis_enabled ? 'true' : 'false',
+    }
+
+    if (config.redis_enabled) {
+      if (config.redis_host) envUpdates.REDIS_HOST = config.redis_host
+      if (config.redis_port) envUpdates.REDIS_PORT = String(config.redis_port)
+      if (config.redis_password) envUpdates.REDIS_PASSWORD = config.redis_password
     }
 
     if (dbType === 'sqlite') {
