@@ -1,6 +1,6 @@
-# Minecraft Skin Server
+# CatTavernSkins
 
-Yggdrasil API 兼容的皮肤站系统，支持自定义前端、多数据库和多平台部署。
+Yggdrasil API 兼容的 Minecraft 皮肤站系统，支持自定义前端、多数据库和多平台部署。
 
 > **主线开发环境**：Windows + SQLite（零配置，开箱即用）
 
