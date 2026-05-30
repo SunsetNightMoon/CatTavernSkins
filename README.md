@@ -189,7 +189,7 @@ npm run migrate
 ### Web 管理
 
 - 用户注册 / 登录（邮箱验证）
-- 本地人机验证（算术题，无外部依赖）
+- 本地人机验证（算术题，无外部依赖；计划替换为 Cloudflare Turnstile）
 - 皮肤库（参考 NameMC 设计）
 - 3D 皮肤预览（Three.js）
 - 权限级别：私有 / 公开不可下载 / 公开可下载
@@ -265,6 +265,9 @@ java -jar -javaagent:authlib-injector.jar=https://skin.example.com \
 - [x] 3D 皮肤预览
 - [x] 管理员面板
 - [x] 邮箱验证 + 本地人机验证
+- [ ] Cloudflare 防护集成
+  - [ ] 注册/登录等验证场景：Turnstile Managed 模式（Cloudflare 根据风险自动决定是否弹出质询）
+  - [ ] 全站其它页面：Turnstile Invisible 模式（无感运行，异常行为时触发 JS 质询）
 - [ ] OAuth 2.0（GitHub / Microsoft）
 - [ ] S3 / MinIO 对象存储
 - [ ] Swagger API 文档
