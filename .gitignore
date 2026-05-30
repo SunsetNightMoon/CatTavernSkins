@@ -72,9 +72,10 @@ NUL.exe
 coverage/
 .nyc_output/
 
-# WorkBuddy
+# WorkBuddy / AI tools
 .workbuddy/
 .codebuddy/
+.trae/
 
 # AI-related plan/reports
 for_AI/

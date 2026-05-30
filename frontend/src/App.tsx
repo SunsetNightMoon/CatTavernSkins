@@ -8,6 +8,7 @@ import { setAuthClearHandler } from './utils/api'
 import SetupWizard from './pages/Setup/SetupWizard'
 import { Login } from './pages/Auth/Login'
 import { Register } from './pages/Auth/Register'
+import { OAuthCallback } from './pages/Auth/OAuthCallback'
 import { Landing } from './pages/Landing/Landing'
 import { SkinLibrary } from './pages/Library/SkinLibrary'
 import { SkinDetail } from './pages/SkinDetail/SkinDetail'
@@ -99,6 +100,7 @@ function App() {
       {/* 认证路由 */}
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
+      <Route path="/oauth-success" element={<OAuthCallback />} />
 
       {/* 带布局的路由 */}
       <Route element={<Layout />}>

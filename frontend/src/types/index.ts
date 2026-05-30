@@ -82,11 +82,13 @@ export interface RegisterDTO {
   email: string
   password: string
   profile_name: string
-  captcha_session_id: string
-  captcha_answer: string
+  captcha_session_id?: string
+  captcha_answer?: string
+  turnstile_token?: string
 }
 
 export interface LoginDTO {
   email: string
   password: string
+  turnstile_token?: string
 }

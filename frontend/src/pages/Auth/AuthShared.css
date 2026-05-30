@@ -489,3 +489,52 @@
   color: rgba(0, 0, 0, 0.65) !important;
   border-color: #d9d9d9 !important;
 }
+
+/* OAuth buttons */
+.oauth-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.oauth-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+.oauth-btn--github:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1) !important;
+}
+
+.oauth-btn--microsoft:hover {
+  border-color: rgba(0, 164, 239, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 164, 239, 0.15) !important;
+}
+
+[data-theme="light"] .oauth-btn {
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+[data-theme="light"] .oauth-btn:hover {
+  border-color: #4096ff !important;
+  color: #4096ff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .oauth-btn--github:hover {
+  border-color: #24292e !important;
+  color: #24292e !important;
+}
+
+[data-theme="light"] .oauth-btn--microsoft:hover {
+  border-color: #00a4ef !important;
+  color: #00a4ef !important;
+}

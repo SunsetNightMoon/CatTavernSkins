@@ -9,6 +9,7 @@ import { TokenModel } from '../../models/Token';
 import { UserModel } from '../../models/User';
 import { FavoriteModel } from '../../models/Favorite';
 import { calculateFileHash } from '../../utils/image';
+import { CaptchaService } from '../../services/CaptchaService';
 
 const router = Router();
 
@@ -49,8 +50,20 @@ const upload = multer({
 });
 
 /**
- * GET /api/skins
- * 获取用户的皮肤列表
+ * @openapi
+ * /api/skins:
+ *   get:
+ *     tags: [皮肤]
+ *     summary: 获取皮肤列表
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 成功返回皮肤列表
+ *       401:
+ *         description: 未认证
+ *       403:
+ *         description: 令牌无效
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -143,6 +156,20 @@ router.post('/upload-cape', uploadCape.single('cape'), async (req: any, res: Res
       return;
     }
 
+    if (process.env.ENABLE_CAPTCHA !== 'false' && CaptchaService.isTurnstileEnabled()) {
+      const { turnstile_token } = req.body;
+      if (!turnstile_token) {
+        if (req.file) await fs.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ error: 'BadRequest', errorMessage: '请完成人机验证' });
+      }
+      const remoteIp = req.ip || req.socket.remoteAddress;
+      const isTurnstileValid = await CaptchaService.verifyTurnstile(turnstile_token, remoteIp);
+      if (!isTurnstileValid) {
+        if (req.file) await fs.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ error: 'BadRequest', errorMessage: '人机验证失败，请重试' });
+      }
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '请选择披风文件' });
     }
@@ -204,6 +231,20 @@ router.post('/upload', upload.single('skin'), async (req: any, res: Response) =>
     if (!isVerified) {
       if (req.file) await fs.unlink(req.file.path).catch(() => {});
       return;
+    }
+
+    if (process.env.ENABLE_CAPTCHA !== 'false' && CaptchaService.isTurnstileEnabled()) {
+      const { turnstile_token } = req.body;
+      if (!turnstile_token) {
+        if (req.file) await fs.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ error: 'BadRequest', errorMessage: '请完成人机验证' });
+      }
+      const remoteIp = req.ip || req.socket.remoteAddress;
+      const isTurnstileValid = await CaptchaService.verifyTurnstile(turnstile_token, remoteIp);
+      if (!isTurnstileValid) {
+        if (req.file) await fs.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ error: 'BadRequest', errorMessage: '人机验证失败，请重试' });
+      }
     }
 
     if (!req.file) {

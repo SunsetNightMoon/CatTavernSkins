@@ -1,9 +1,14 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { loadPublicKey } from './utils/crypto';
+import { swaggerSpec } from './config/swagger';
+import { StorageService } from './services/StorageService';
+import { getStorageConfig } from './config/storage';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 
 // 加载环境变量
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -23,6 +28,7 @@ import libraryRoutes from './api/web/library';
 import favoritesRoutes from './api/web/favorites';
 import adminRoutes from './api/web/admin';
 import settingsRoutes from './api/web/settings';
+import oauthRoutes from './api/web/oauth';
 
 const app: Express = express();
 
@@ -39,9 +45,23 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://challenges.cloudflare.com",
+        ...(process.env.ENABLE_SWAGGER === 'true' ? ["https://cdn.jsdelivr.net"] : []),
+      ],
+      scriptSrc: [
+        "'self'",
+        "https://challenges.cloudflare.com",
+        ...(process.env.ENABLE_SWAGGER === 'true' ? ["https://cdn.jsdelivr.net"] : []),
+      ],
       imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: [
+        "'self'",
+        ...(process.env.ENABLE_SWAGGER === 'true' ? ["https://cdn.jsdelivr.net"] : []),
+      ],
+      frameSrc: ["https://challenges.cloudflare.com"],
     },
   },
   hsts: {
@@ -54,40 +74,96 @@ app.use(helmet({
 // 解析JSON请求体
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // 静态文件服务（皮肤文件访问）
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
-app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
-  // 允许跨域读取皮肤图片（canvas getImageData 需要）
-  // 注意：不能同时设置 Allow-Origin: * 和 Allow-Credentials: true
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.resolve(uploadDir), {
-  setHeaders: (res, filePath) => {
-    if (filePath.toLowerCase().endsWith('.mp4')) {
-      res.setHeader('Content-Type', 'video/mp4');
-    } else if (filePath.toLowerCase().endsWith('.webm')) {
-      res.setHeader('Content-Type', 'video/webm');
+const useS3 = StorageService.isS3();
+
+if (useS3) {
+  const s3Config = getStorageConfig().s3;
+  const s3Client = new S3Client({
+    endpoint: s3Config.endpoint || undefined,
+    region: s3Config.region,
+    credentials: {
+      accessKeyId: s3Config.accessKey,
+      secretAccessKey: s3Config.secretKey,
+    },
+    forcePathStyle: true,
+  });
+
+  app.get('/uploads/:subdir/:filename', async (req: Request, res: Response) => {
+    try {
+      const { subdir, filename } = req.params;
+      const key = `${subdir}/${filename}`;
+
+      const origin = req.headers.origin;
+      if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      }
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+      if (s3Config.publicUrl) {
+        return res.redirect(`${s3Config.publicUrl}/${key}`);
+      }
+
+      const result = await s3Client.send(new GetObjectCommand({
+        Bucket: s3Config.bucket,
+        Key: key,
+      }));
+
+      if (result.ContentType) {
+        res.setHeader('Content-Type', result.ContentType);
+      }
+      if (result.ContentLength) {
+        res.setHeader('Content-Length', result.ContentLength);
+      }
+      if (result.Body) {
+        (result.Body as any).pipe(res);
+      } else {
+        res.status(404).json({ error: 'NotFound', errorMessage: '文件不存在' });
+      }
+    } catch (error: any) {
+      if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+        res.status(404).json({ error: 'NotFound', errorMessage: '文件不存在' });
+      } else {
+        console.error('S3 proxy error:', error);
+        res.status(500).json({ error: 'InternalServerError', errorMessage: '读取文件失败' });
+      }
     }
-  },
-}),
-// 同时服务 public/uploads（背景图上传目录）
-express.static(path.resolve('public/uploads'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.toLowerCase().endsWith('.mp4')) {
-      res.setHeader('Content-Type', 'video/mp4');
-    } else if (filePath.toLowerCase().endsWith('.webm')) {
-      res.setHeader('Content-Type', 'video/webm');
+  });
+} else {
+  app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
-  },
-})
-);
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  }, express.static(path.resolve(uploadDir), {
+    setHeaders: (res, filePath) => {
+      if (filePath.toLowerCase().endsWith('.mp4')) {
+        res.setHeader('Content-Type', 'video/mp4');
+      } else if (filePath.toLowerCase().endsWith('.webm')) {
+        res.setHeader('Content-Type', 'video/webm');
+      }
+    },
+  }),
+  express.static(path.resolve('public/uploads'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.toLowerCase().endsWith('.mp4')) {
+        res.setHeader('Content-Type', 'video/mp4');
+      } else if (filePath.toLowerCase().endsWith('.webm')) {
+        res.setHeader('Content-Type', 'video/webm');
+      }
+    },
+  })
+  );
+}
 
 // 请求日志（开发环境）
 if (process.env.NODE_ENV !== 'production') {
@@ -147,6 +223,15 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Swagger API 文档
+if (process.env.ENABLE_SWAGGER === 'true') {
+  const swaggerUi = require('swagger-ui-express');
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get('/api-docs.json', (_req: Request, res: Response) => {
+    res.json(swaggerSpec);
+  });
+}
+
 // Yggdrasil API 路由
 app.use('/authserver', authserverRoutes);
 app.use('/sessionserver', sessionserverRoutes);
@@ -155,6 +240,7 @@ app.use('/api/user/profile', textureRoutes);
 
 // Web管理API路由
 app.use('/api/auth', webAuthRoutes);
+app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/me/profiles', webProfilesRoutes);  // Web 个人资料 API，避免与 Yggdrasil 冲突
 app.use('/api/skins', webSkinsRoutes);
 app.use('/api/capes', webCapesRoutes);
