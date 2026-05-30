@@ -113,7 +113,7 @@ export class AuthService {
     }
 
     // 检查邮箱验证（未验证邮箱无法登录启动器）
-    if (user.email_verified !== 1) {
+    if (!user.email_verified) {
       throw new Error('ForbiddenOperationException: Email not verified. Please verify your email before logging in.');
     }
 

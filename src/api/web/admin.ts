@@ -1072,11 +1072,11 @@ router.put('/users/:id/verify-email', requireAuth, requireAdmin, async (req: Req
     }
 
     // 已验证则无需操作
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '该用户邮箱已验证' });
     }
 
-    await DB.query('UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
+    await DB.query('UPDATE users SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
 
     res.json({ message: '邮箱已手动验证' });
   } catch (error) {
@@ -1097,7 +1097,7 @@ router.post('/users/:id/send-verification', requireAuth, requireAdmin, async (re
       return res.status(404).json({ error: 'NotFound', errorMessage: '用户不存在' });
     }
 
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '该用户邮箱已验证' });
     }
 
@@ -1472,7 +1472,7 @@ export default router;
 // ============================================================
 // 启动迁移：将 bg/ 中的旧文件迁移到分类文件夹
 // ============================================================
-async function migrateThemeImages() {
+export async function migrateThemeImages() {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
@@ -1563,6 +1563,4 @@ async function migrateThemeImages() {
   }
 }
 
-// 启动时执行迁移（不阻塞启动）
-migrateThemeImages().catch(() => {});
 

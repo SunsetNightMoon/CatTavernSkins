@@ -50,7 +50,7 @@ router.get('/public', async (_req: Request, res: Response) => {
       COPYRIGHT_TEXT: settings.COPYRIGHT_TEXT ?? SETTINGS_DEFAULTS.COPYRIGHT_TEXT,
       COPYRIGHT_BEIAN: settings.COPYRIGHT_BEIAN ?? SETTINGS_DEFAULTS.COPYRIGHT_BEIAN,
       // 项目版权标识（硬编码，不可通过管理面板更改）
-    COPYRIGHT_PROJECT: settings.COPYRIGHT_PROJECT ?? SETTINGS_DEFAULTS.COPYRIGHT_PROJECT,
+      COPYRIGHT_PROJECT: settings.COPYRIGHT_PROJECT ?? SETTINGS_DEFAULTS.COPYRIGHT_PROJECT,
     };
 
     res.json(publicSettings);

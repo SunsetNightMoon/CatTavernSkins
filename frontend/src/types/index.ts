@@ -41,6 +41,9 @@ export interface Skin {
   uploader_email?: string
   user_uid?: number
   uploader_name?: string // 上传者游戏名称（profile.name）
+  is_ai_generated?: boolean | number
+  admin_warning?: string | null
+  warning_set_by_level?: number | null
 }
 
 export interface CreateSkinDTO {
@@ -70,6 +73,9 @@ export interface Cape {
   created_at: string
   user_uid?: number
   uploader_name?: string // 上传者游戏名称（profile.name）
+  is_ai_generated?: boolean | number
+  admin_warning?: string | null
+  warning_set_by_level?: number | null
 }
 
 export interface RegisterDTO {

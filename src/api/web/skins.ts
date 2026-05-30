@@ -17,7 +17,7 @@ const router = Router();
  */
 async function checkEmailVerified(userId: string, res: Response): Promise<boolean> {
   const user = await UserModel.findById(userId);
-  if (!user || user.email_verified !== 1) {
+  if (!user || !user.email_verified) {
     res.status(403).json({
       error: 'Forbidden',
       errorMessage: '请先验证邮箱后再使用此功能',

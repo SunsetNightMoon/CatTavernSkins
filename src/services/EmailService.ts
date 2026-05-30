@@ -47,7 +47,7 @@ export async function sendVerificationEmail(email: string): Promise<{ success: b
     if (!user) {
       return { success: false, error: 'USER_NOT_FOUND' }
     }
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return { success: false, error: 'ALREADY_VERIFIED' }
     }
 

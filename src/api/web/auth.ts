@@ -383,7 +383,7 @@ router.post('/send-verification', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'NotFound', errorMessage: '用户不存在' });
     }
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '邮箱已验证，无需重复操作' });
     }
 
