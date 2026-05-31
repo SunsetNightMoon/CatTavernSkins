@@ -1,0 +1,73 @@
+/* 法律文档页（用户协议 / 隐私政策）占位样式 */
+.legal-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 20px;
+  background: #0f1117;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+}
+
+.legal-page[data-theme="light"] {
+  background: #f5f6fa;
+}
+
+.legal-card {
+  width: 100%;
+  max-width: 760px;
+  background: rgba(20, 24, 40, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 40px 44px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.8;
+}
+
+.legal-page[data-theme="light"] .legal-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.legal-card__title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #fff;
+}
+
+.legal-page[data-theme="light"] .legal-card__title {
+  color: #1a1a2e;
+}
+
+.legal-card__placeholder {
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
+.legal-card__footer {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+}
+
+.legal-page[data-theme="light"] .legal-card__footer {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.legal-card__footer a {
+  color: #4a9eff;
+  text-decoration: none;
+}
+
+.legal-card__footer a:hover {
+  text-decoration: underline;
+}
+
+.legal-card__sep {
+  margin: 0 10px;
+  opacity: 0.4;
+}
