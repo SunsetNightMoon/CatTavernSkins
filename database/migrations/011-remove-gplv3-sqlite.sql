@@ -34,7 +34,19 @@ CREATE TABLE skins_new (
   FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
-INSERT INTO skins_new SELECT * FROM skins;
+-- 显式列名拷贝，避免 SELECT * 在源表列数/顺序不一致时静默失败并丢数据。
+INSERT INTO skins_new (
+  id, user_id, profile_id, file_path, model_type, file_hash, file_size,
+  width, height, name, description, license_type, permission_level,
+  is_public, is_downloadable, approval_status, approved_by, approved_at,
+  rejected_by, rejection_reason, download_count, view_count, created_at
+)
+SELECT
+  id, user_id, profile_id, file_path, model_type, file_hash, file_size,
+  width, height, name, description, license_type, permission_level,
+  is_public, is_downloadable, approval_status, approved_by, approved_at,
+  rejected_by, rejection_reason, download_count, view_count, created_at
+FROM skins;
 DROP TABLE skins;
 ALTER TABLE skins_new RENAME TO skins;
 
@@ -70,7 +82,19 @@ CREATE TABLE capes_new (
   FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
-INSERT INTO capes_new SELECT * FROM capes;
+-- 显式列名拷贝，避免 SELECT * 在源表列数/顺序不一致时静默失败并丢数据。
+INSERT INTO capes_new (
+  id, user_id, file_path, file_hash, file_size, width, height, name,
+  description, license_type, permission_level, is_public, is_downloadable,
+  approval_status, approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at
+)
+SELECT
+  id, user_id, file_path, file_hash, file_size, width, height, name,
+  description, license_type, permission_level, is_public, is_downloadable,
+  approval_status, approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at
+FROM capes;
 DROP TABLE capes;
 ALTER TABLE capes_new RENAME TO capes;
 

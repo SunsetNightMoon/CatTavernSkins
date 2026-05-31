@@ -13,6 +13,22 @@ import { StorageService } from '../../services/StorageService';
 
 const router = Router();
 
+// ─── auth_token Cookie 配置（修复 H1：令牌改由 httpOnly Cookie 承载，杜绝 XSS 窃取）──
+// 名称、属性与 oauth.ts 共享，确保桥接中间件 (app.ts) 能统一识别。
+export const AUTH_COOKIE_NAME = 'auth_token';
+// 与令牌 15 天生命周期一致（15*24*60*60*1000 ms）。
+const AUTH_COOKIE_MAX_AGE = 15 * 24 * 60 * 60 * 1000;
+
+export function getAuthCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: AUTH_COOKIE_MAX_AGE,
+  };
+}
+
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
@@ -262,11 +278,13 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
 router.post('/login', authLimiter, async (req: Request, res: Response) => {
   try {
     const { email, password, turnstile_token, captcha_session_id, captcha_answer } = req.body;
+    // 登录标识符：兼容旧字段名 email，实际支持「邮箱或用户名（角色名）」
+    const identifier = (req.body.identifier ?? email ?? req.body.username) as string | undefined;
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({
         error: 'BadRequest',
-        errorMessage: '邮箱和密码不能为空',
+        errorMessage: '邮箱/用户名和密码不能为空',
       });
     }
 
@@ -372,6 +390,10 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
     // 获取第一个角色名用于前端快捷显示
     const primaryProfile = profiles[0];
     const profileName = primaryProfile?.name || null;
+
+    // 同时通过 httpOnly Cookie 下发令牌（修复 H1）。仍在 JSON body 中返回令牌，
+    // 保持对现有集成测试 / API 客户端 / Bearer 头的完全向后兼容。
+    res.cookie(AUTH_COOKIE_NAME, token.access_token, getAuthCookieOptions());
 
     res.json({
       message: '登录成功',
@@ -929,6 +951,9 @@ router.post('/delete-account', authLimiter, async (req: Request, res: Response) 
 
     // 6. 删除用户
     await DB.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    // 令牌已删除，清除 httpOnly Cookie（修复 H1：避免失效令牌残留在浏览器）。
+    res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
 
     res.json({ message: '账号已注销' });
   } catch (error: any) {

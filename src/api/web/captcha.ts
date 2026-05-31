@@ -1,7 +1,26 @@
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { CaptchaService } from '../../services/CaptchaService';
 
 const router = Router();
+
+// 限制验证码生成：每 IP 60 秒内最多 30 次，防止内存放大型 DoS (M3a)
+const captchaGenerateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TooManyRequests', errorMessage: '请求过于频繁，请稍后再试' },
+});
+
+// 限制 Turnstile 校验：每 IP 60 秒内最多 20 次，防止对 Cloudflare 的放大请求 (M3a)
+const verifyTurnstileLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TooManyRequests', errorMessage: '请求过于频繁，请稍后再试' },
+});
 
 /**
  * @openapi
@@ -28,7 +47,7 @@ const router = Router();
  *                 question:
  *                   type: string
  */
-router.get('/generate', async (req: Request, res: Response) => {
+router.get('/generate', captchaGenerateLimiter, async (req: Request, res: Response) => {
   try {
     const sessionId = req.query.sessionId as string || crypto.randomUUID();
     const { question } = await CaptchaService.generate(sessionId);
@@ -82,7 +101,7 @@ router.post('/verify', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/verify-turnstile', async (req: Request, res: Response) => {
+router.post('/verify-turnstile', verifyTurnstileLimiter, async (req: Request, res: Response) => {
   try {
     const { token } = req.body;
 

@@ -13,24 +13,24 @@ export function OAuthCallback() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const token = searchParams.get('token')
     const isNewUser = searchParams.get('new_user') === 'true'
 
-    if (!token) {
-      setError('缺少认证令牌，请重新登录')
-      return
+    // 安全加固：剥离地址栏 query，避免 new_user 等标志残留在历史记录中。
+    const stripQueryFromUrl = () => {
+      window.history.replaceState(null, '', '/oauth-success')
     }
 
     const fetchUser = async () => {
       try {
-        const response = await axios.get('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        // 修复 H1：令牌已由后端写入 httpOnly auth_token Cookie，不再出现在 URL。
+        // withCredentials 已全局开启，Cookie 随同源请求自动携带，无需手动设置 Authorization 头。
+        const response = await axios.get('/api/auth/me')
 
         const data = response.data
         const profileName = data.profileName || null
         const profileId = data.profiles?.[0]?.id || null
-        setAuth(token, data.user, data.skinUrl, profileName, profileId)
+        // 认证主载体为 Cookie；内存 store 的 token 字段此处无值，传空串即可。
+        setAuth('', data.user, data.skinUrl, profileName, profileId)
 
         if (isNewUser) {
           navigate('/profile', { state: { oauthNewUser: true }, replace: true })
@@ -38,6 +38,7 @@ export function OAuthCallback() {
           navigate('/', { replace: true })
         }
       } catch (err: any) {
+        stripQueryFromUrl()
         setError(err.response?.data?.errorMessage || '获取用户信息失败，请重新登录')
       }
     }

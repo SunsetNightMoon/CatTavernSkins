@@ -34,7 +34,22 @@ CREATE TABLE skins_new (
   FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
-INSERT INTO skins_new SELECT * FROM skins;
+-- 显式列名拷贝（不能用 SELECT *）：源 skins 表可能由 SetupService 创建，
+-- 含 original_name/views/likes 等模型未使用的“死列”，列数(26)与新表(23)不符，
+-- 直接 SELECT * 会因列数不匹配而 INSERT 失败。配合迁移运行器“出错仅记录并继续”的行为，
+-- 后续 DROP+RENAME 仍会执行，导致原表数据被空表覆盖丢失。显式列名按名对齐，丢弃死列且不受列顺序影响。
+INSERT INTO skins_new (
+  id, user_id, profile_id, file_path, model_type, file_hash, file_size,
+  width, height, name, description, license_type, permission_level,
+  is_public, is_downloadable, approval_status, approved_by, approved_at,
+  rejected_by, rejection_reason, download_count, view_count, created_at
+)
+SELECT
+  id, user_id, profile_id, file_path, model_type, file_hash, file_size,
+  width, height, name, description, license_type, permission_level,
+  is_public, is_downloadable, approval_status, approved_by, approved_at,
+  rejected_by, rejection_reason, download_count, view_count, created_at
+FROM skins;
 DROP TABLE skins;
 ALTER TABLE skins_new RENAME TO skins;
 
@@ -70,7 +85,19 @@ CREATE TABLE capes_new (
   FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
-INSERT INTO capes_new SELECT * FROM capes;
+-- 显式列名拷贝（理由同上 skins）。capes 死列：original_name/views/likes。
+INSERT INTO capes_new (
+  id, user_id, file_path, file_hash, file_size, width, height, name,
+  description, license_type, permission_level, is_public, is_downloadable,
+  approval_status, approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at
+)
+SELECT
+  id, user_id, file_path, file_hash, file_size, width, height, name,
+  description, license_type, permission_level, is_public, is_downloadable,
+  approval_status, approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at
+FROM capes;
 DROP TABLE capes;
 ALTER TABLE capes_new RENAME TO capes;
 

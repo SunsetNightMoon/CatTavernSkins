@@ -8,7 +8,7 @@ import { loadPublicKey } from './utils/crypto';
 import { swaggerSpec } from './config/swagger';
 import { StorageService } from './services/StorageService';
 import { getStorageConfig } from './config/storage';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, S3ClientConfig, GetObjectCommand } from '@aws-sdk/client-s3';
 
 // 加载环境变量
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -32,6 +32,10 @@ import oauthRoutes from './api/web/oauth';
 
 const app: Express = express();
 
+// 信任反向代理（修复 LOW：req.ip 在反向代理后取真实客户端 IP，并使 secure cookie 正确生效）
+// 必须在限流器 / helmet 之前设置，限流与安全中间件才能看到正确的客户端 IP。
+app.set('trust proxy', 1);
+
 // CORS配置（必须在 helmet 之前，以便 helmet 看到正确的 CORS 配置）
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
@@ -54,7 +58,6 @@ app.use(helmet({
       scriptSrc: [
         "'self'",
         "https://challenges.cloudflare.com",
-        ...(process.env.ENABLE_SWAGGER === 'true' ? ["https://cdn.jsdelivr.net"] : []),
       ],
       imgSrc: ["'self'", "data:", "https:"],
       fontSrc: [
@@ -76,35 +79,91 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Cookie → Authorization 桥接中间件（修复 H1）。
+// 必须在 cookieParser() 之后、所有路由 / 安装守卫之前运行。
+// 若请求没有有效的 Authorization 头但携带 auth_token cookie（httpOnly，不可被 JS 读取），
+// 则合成 `Bearer <cookie>` 头，使所有现有基于 Bearer 的路由（含 Yggdrasil）透明地支持 Cookie，
+// 同时保留显式有效 Authorization 头优先的行为。
+//
+// 注意「无效头」的判定：H1 后前端 token 不再持久化到 localStorage，部分历史代码
+// 仍从 localStorage 读取并显式发送 `Authorization: Bearer null`（或 `Bearer undefined`、
+// 空 Bearer）。这类假头会顶掉 cookie 导致鉴权失败。此处将其视为「无有效头」，
+// 回退到 cookie，从而无需逐一改动数十处前端调用点。
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : '';
+  const headerIsValid = headerToken !== '' && headerToken !== 'null' && headerToken !== 'undefined';
+
+  if (!headerIsValid && req.cookies?.auth_token) {
+    req.headers.authorization = `Bearer ${req.cookies.auth_token}`;
+  }
+  next();
+});
+
 // 静态文件服务（皮肤文件访问）
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
 const useS3 = StorageService.isS3();
 
+// /uploads/:subdir/:filename 代理路由允许的子目录白名单。
+// 仅纹理（皮肤/披风）通过该 2 段式路由提供；主题/背景等管理媒体走更深的本地路径
+// （/uploads/theme/<type>/<file>、/uploads/bg/homepage/<file>，且始终写入本地 public/uploads），
+// 不会命中此路由。
+const ALLOWED_UPLOAD_SUBDIRS = new Set(['skins', 'capes']);
+// 保守的安全文件名模式：纹理为 png，管理媒体可能含 mp4/webm/jpg 等。
+const SAFE_FILENAME_RE = /^[A-Za-z0-9._-]+\.(png|jpg|jpeg|webp|gif|mp4|webm)$/;
+
 if (useS3) {
   const s3Config = getStorageConfig().s3;
-  const s3Client = new S3Client({
-    endpoint: s3Config.endpoint || undefined,
+  // 与 StorageService 保持一致：仅在配置了自定义 endpoint（MinIO 等）时设置
+  // endpoint + forcePathStyle；真实 AWS S3 使用 SDK 默认 endpoint 与虚拟主机寻址。
+  const s3ClientConfig: S3ClientConfig = {
     region: s3Config.region,
     credentials: {
       accessKeyId: s3Config.accessKey,
       secretAccessKey: s3Config.secretKey,
     },
-    forcePathStyle: true,
-  });
+  };
+  if (s3Config.endpoint) {
+    s3ClientConfig.endpoint = s3Config.endpoint;
+    s3ClientConfig.forcePathStyle = true;
+  }
+  const s3Client = new S3Client(s3ClientConfig);
 
   app.get('/uploads/:subdir/:filename', async (req: Request, res: Response) => {
+    const { subdir, filename } = req.params;
+
+    // 输入硬化（在触碰 S3 之前完成）：
+    // 1) 子目录必须在白名单内。
+    if (!ALLOWED_UPLOAD_SUBDIRS.has(subdir)) {
+      return res.status(404).json({ error: 'NotFound', errorMessage: '文件不存在' });
+    }
+    // 2) 文件名必须匹配严格安全模式，且不含路径分隔符 / 遍历序列（含 URL 编码形式）。
+    const lowerFilename = filename.toLowerCase();
+    if (
+      !SAFE_FILENAME_RE.test(filename) ||
+      filename.includes('..') ||
+      filename.includes('/') ||
+      filename.includes('\\') ||
+      lowerFilename.includes('%2e') ||
+      lowerFilename.includes('%2f') ||
+      lowerFilename.includes('%5c')
+    ) {
+      return res.status(400).json({ error: 'BadRequest', errorMessage: '非法文件名' });
+    }
+
+    const key = `${subdir}/${filename}`;
+    // 3) 解码后的防遍历兜底校验。
+    if (key.includes('..') || key.startsWith('/')) {
+      return res.status(400).json({ error: 'BadRequest', errorMessage: '非法路径' });
+    }
+
+    // 只读公开静态资源（无凭据/Cookie），统一使用 ACAO: * 而非反射任意 Origin。
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
     try {
-      const { subdir, filename } = req.params;
-      const key = `${subdir}/${filename}`;
-
-      const origin = req.headers.origin;
-      if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-      } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-      }
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-
       if (s3Config.publicUrl) {
         return res.redirect(`${s3Config.publicUrl}/${key}`);
       }
@@ -121,7 +180,23 @@ if (useS3) {
         res.setHeader('Content-Length', result.ContentLength);
       }
       if (result.Body) {
-        (result.Body as any).pipe(res);
+        const body = result.Body as any;
+        // 处理流中途错误（头部已发送后 S3 出错不应使进程崩溃）。
+        body.on('error', (streamErr: Error) => {
+          console.error('S3 stream error:', streamErr);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'InternalServerError', errorMessage: '读取文件失败' });
+          } else {
+            res.destroy(streamErr);
+          }
+        });
+        // 处理客户端中断：及时销毁底层流，释放资源。
+        res.on('close', () => {
+          if (typeof body.destroy === 'function') {
+            body.destroy();
+          }
+        });
+        body.pipe(res);
       } else {
         res.status(404).json({ error: 'NotFound', errorMessage: '文件不存在' });
       }
@@ -135,13 +210,9 @@ if (useS3) {
     }
   });
 } else {
-  app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
+  app.use('/uploads', (_req: Request, res: Response, next: NextFunction) => {
+    // 只读公开静态资源（无凭据/Cookie），统一使用 ACAO: * 而非反射任意 Origin。
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
   }, express.static(path.resolve(uploadDir), {

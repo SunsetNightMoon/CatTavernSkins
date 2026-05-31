@@ -8,8 +8,9 @@ import { ProfileModel } from '../../models/Profile';
 import { TokenModel } from '../../models/Token';
 import { UserModel } from '../../models/User';
 import { FavoriteModel } from '../../models/Favorite';
-import { calculateFileHash } from '../../utils/image';
+import { calculateFileHash, validateSkin, validateCape, processSkin } from '../../utils/image';
 import { CaptchaService } from '../../services/CaptchaService';
+import { StorageService } from '../../services/StorageService';
 
 const router = Router();
 
@@ -90,7 +91,10 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json(skins.map(s => ({
       id: s.id,
-      file_path: s.file_path?.replace(/^\.\//, '/'),
+      // 本地存储保持相对路径（与既有行为一致）；S3 存储经 getFileUrl 修正前缀（裸 key 加 /uploads/ 代理或 CDN）。
+      file_path: StorageService.isS3()
+        ? StorageService.getFileUrl(s.file_path)
+        : s.file_path?.replace(/^\.\//, '/'),
       model_type: s.model_type,
       name: s.name,
       description: s.description,
@@ -181,6 +185,19 @@ router.post('/upload-cape', uploadCape.single('cape'), async (req: any, res: Res
       return res.status(400).json({ error: 'BadRequest', errorMessage: '请输入披风名称' });
     }
 
+    // 校验披风内容（防止伪造 Content-Type 的非图片/多语言文件）
+    const validation = await validateCape(req.file.path);
+    if (!validation.valid) {
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: 'BadRequest', errorMessage: validation.error || '披风文件无效' });
+    }
+
+    // 重新编码以剥离元数据/EXIF
+    const processedPath = req.file.path.replace('.png', '_processed.png');
+    await processSkin(req.file.path, processedPath);
+    await fs.unlink(req.file.path);
+    await fs.rename(processedPath, req.file.path);
+
     // 披风相对路径，前端通过 /uploads/capes/xxx.png 访问
     const capeUrl = '/uploads/capes/' + req.file.filename;
     const filePath = './' + path.relative(process.cwd(), req.file.path).replace(/\\/g, '/');
@@ -193,6 +210,8 @@ router.post('/upload-cape', uploadCape.single('cape'), async (req: any, res: Res
       filePath,
       fileHash,
       fileSize: req.file.size,
+      width: validation.width || 22,
+      height: validation.height || 17,
       name: cape_name.trim(),
       description,
       licenseType: license_type,
@@ -262,7 +281,19 @@ router.post('/upload', upload.single('skin'), async (req: any, res: Response) =>
       return res.status(400).json({ error: 'BadRequest', errorMessage: '请输入皮肤名称' });
     }
 
-    const { calculateFileHash } = await import('../../utils/image');
+    // 校验皮肤内容（防止伪造 Content-Type 的非图片/多语言文件）
+    const validation = await validateSkin(req.file.path);
+    if (!validation.valid) {
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: 'BadRequest', errorMessage: validation.error || '皮肤文件无效' });
+    }
+
+    // 重新编码以剥离元数据/EXIF
+    const processedPath = req.file.path.replace('.png', '_processed.png');
+    await processSkin(req.file.path, processedPath);
+    await fs.unlink(req.file.path);
+    await fs.rename(processedPath, req.file.path);
+
     const fileHash = await calculateFileHash(req.file.path);
 
     // 检查是否已存在相同皮肤
@@ -278,8 +309,8 @@ router.post('/upload', upload.single('skin'), async (req: any, res: Response) =>
       modelType: model_type === 'slim' ? 'slim' : 'default',
       fileHash,
       fileSize: req.file.size,
-      width: 64,
-      height: 64,
+      width: validation.width,
+      height: validation.height,
       name: skin_name.trim(),
       description,
       licenseType: license_type,

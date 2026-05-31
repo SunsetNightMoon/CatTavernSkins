@@ -4,6 +4,7 @@ import { ProfileModel, Profile } from '../models/Profile';
 import { SkinModel } from '../models/Skin';
 import { CapeModel } from '../models/Cape';
 import { loadPublicKey, signTextures } from '../utils/crypto';
+import { StorageService } from './StorageService';
 import { TexturesProperty } from '../types/yggdrasil';
 
 export class SessionService {
@@ -80,7 +81,7 @@ export class SessionService {
       const skin = await SkinModel.findById(profile.skin_id);
       if (skin && (skin.is_public || skin.is_downloadable)) {
         textures.SKIN = {
-          url: `${process.env.BASE_URL || 'http://localhost:3000'}/${skin.file_path.replace(/^\.\//, '')}`,
+          url: StorageService.getFileUrl(skin.file_path),
           metadata: {
             model: skin.model_type === 'slim' ? 'slim' : 'default',
           },
@@ -92,7 +93,7 @@ export class SessionService {
       const cape = await CapeModel.findById(profile.cape_id);
       if (cape && (cape.is_public || cape.is_downloadable)) {
         textures.CAPE = {
-          url: `${process.env.BASE_URL || 'http://localhost:3000'}/${cape.file_path.replace(/^\.\//, '')}`,
+          url: StorageService.getFileUrl(cape.file_path),
         };
       }
     }

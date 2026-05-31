@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import os from 'os';
+import { randomUUID } from 'crypto';
 import { ProfileModel } from '../../models/Profile';
 import { SkinModel, Skin } from '../../models/Skin';
 import { CapeModel, Cape } from '../../models/Cape';
@@ -41,7 +42,8 @@ const storage = useS3
         cb(null, fullPath);
       },
       filename: (_req, _file, cb) => {
-        const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
+        // 使用加密随机生成不可预测的文件名 (M3c)
+        const uniqueName = `${randomUUID()}.png`;
         cb(null, uniqueName);
       },
     });
@@ -178,7 +180,8 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
       });
     }
 
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
+    // 使用加密随机生成不可预测的对象键 (M3c)
+    const uniqueName = `${randomUUID()}.png`;
     const subDir = textureType === 'cape' ? 'capes' : 'skins';
     const s3Key = `${subDir}/${uniqueName}`;
 
@@ -225,9 +228,12 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
           existingRecord = await CapeModel.findByHash(fileHash) as any;
         }
 
+        // 仅当已存在记录且属于当前上传者时才复用，避免跨用户数据篡改 (H2)
+        const canReuse = !!existingRecord && (existingRecord as Skin | Cape).user_id === token.user_id;
+
         let finalRecord: Skin | Cape;
 
-        if (!existingRecord) {
+        if (!canReuse) {
           const processedBuffer = await fs.readFile(tmpPath);
           const storedPath = await StorageService.uploadFile(s3Key, processedBuffer, 'image/png');
 
@@ -266,10 +272,11 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
             throw dbError;
           }
         } else {
+          // existingRecord 此处必定属于当前用户，复用是安全的
           if (textureType === 'skin') {
             await SkinModel.updateProfileId((existingRecord as Skin).id, uuid);
           }
-          finalRecord = existingRecord;
+          finalRecord = existingRecord as Skin | Cape;
         }
 
         if (textureType === 'skin') {
@@ -320,9 +327,12 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
         existingRecord = await CapeModel.findByHash(fileHash) as any;
       }
 
+      // 仅当已存在记录且属于当前上传者时才复用，避免跨用户数据篡改 (H2)
+      const canReuse = !!existingRecord && (existingRecord as Skin | Cape).user_id === token.user_id;
+
       let finalRecord: Skin | Cape;
 
-      if (!existingRecord) {
+      if (!canReuse) {
         if (textureType === 'skin') {
           finalRecord = await SkinModel.create({
             userId: token.user_id,
@@ -353,10 +363,11 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
           }) as any;
         }
       } else {
+        // existingRecord 此处必定属于当前用户，复用是安全的
         if (textureType === 'skin') {
           await SkinModel.updateProfileId((existingRecord as Skin).id, uuid);
         }
-        finalRecord = existingRecord;
+        finalRecord = existingRecord as Skin | Cape;
       }
 
       if (textureType === 'skin') {
@@ -369,6 +380,11 @@ router.put('/:uuid/:textureType', upload.single('file'), async (req: any, res: R
     }
   } catch (error: any) {
     console.error('Upload error:', error);
+    // 本地磁盘模式下，失败时清理 multer 写入的临时文件，避免泄漏 (M5)
+    // S3 模式使用 memoryStorage（req.file.path 为空）且其内部 finally 已清理 tmpDir
+    if (!useS3 && req.file?.path) {
+      await cleanupLocalFile(req.file.path);
+    }
     res.status(500).json({
       error: 'InternalServerError',
       errorMessage: error.message || '上传失败',

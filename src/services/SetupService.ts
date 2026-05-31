@@ -24,7 +24,9 @@ export class SetupService {
    * 清理数据库中的所有表数据（用于重新初始化）
    */
   private static async resetDatabase(): Promise<void> {
-    const tables = ['cape_favorites', 'skin_favorites', 'sessions', 'tokens', 'blacklist', 'capes', 'skins', 'profiles', 'users', 'system_config']
+    // 顺序：先删引用其它表的子表（FK 依赖），再删被引用的父表。
+    // oauth_accounts/skin_tags 引用 users/skins，必须在 users/skins 之前 DROP。
+    const tables = ['oauth_accounts', 'skin_tags', 'cape_favorites', 'skin_favorites', 'sessions', 'tokens', 'blacklist', 'capes', 'skins', 'profiles', 'users', 'system_config']
     try {
       for (const table of tables) {
         await DB.query(`DROP TABLE IF EXISTS ${table}`)
@@ -267,10 +269,12 @@ export class SetupService {
 
     if (dbType === 'postgresql') {
       const migrationDir = path.resolve(process.cwd(), 'database', 'migrations');
-      const pgMigrations = [
-        '001-init-postgres.sql',
-        '007-add-favorites-table-postgres.sql',
-      ];
+      // 动态运行全部 -postgres 迁移（按编号排序），而非硬编码子集。
+      // 这样与 migrate.ts 的迁移集合保持一致，自动包含 012(AI字段)/013(oauth_accounts)
+      // 以及今后新增的任何迁移，消除"安装路径 schema 落后于迁移路径"的隐患。
+      const pgMigrations = (await fs.readdir(migrationDir))
+        .filter(f => f.endsWith('-postgres.sql'))
+        .sort((a, b) => (parseInt(a.split('-')[0]) || 0) - (parseInt(b.split('-')[0]) || 0));
       for (const file of pgMigrations) {
         const filePath = path.resolve(migrationDir, file);
         const sql = await fs.readFile(filePath, 'utf-8');
@@ -283,7 +287,12 @@ export class SetupService {
           try {
             await DB.query(stmt);
           } catch (e: any) {
-            console.error(`[Setup] 迁移执行失败 [${file}]:`, e.message);
+            // 幂等容错：重复建对象（约束/索引/表/列）视为已存在，跳过；其余错误抛出。
+            const msg = String(e?.message ?? '');
+            if (msg.includes('already exists') || msg.includes('duplicate')) {
+              continue;
+            }
+            console.error(`[Setup] 迁移执行失败 [${file}]:`, msg);
             throw e;
           }
         }
@@ -322,9 +331,8 @@ export class SetupService {
         user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
         profile_id TEXT REFERENCES profiles(id) ON DELETE CASCADE,
         file_path TEXT NOT NULL,
-        file_hash TEXT NOT NULL,
-        original_name TEXT,
         model_type TEXT DEFAULT 'default',
+        file_hash TEXT NOT NULL,
         file_size INTEGER,
         width INTEGER,
         height INTEGER,
@@ -334,8 +342,6 @@ export class SetupService {
         permission_level TEXT DEFAULT 'private',
         is_public INTEGER DEFAULT 0,
         is_downloadable INTEGER DEFAULT 0,
-        views INTEGER DEFAULT 0,
-        likes INTEGER DEFAULT 0,
         download_count INTEGER DEFAULT 0,
         view_count INTEGER DEFAULT 0,
         approval_status TEXT DEFAULT 'pending',
@@ -343,7 +349,10 @@ export class SetupService {
         approved_at TEXT,
         rejected_by TEXT,
         rejection_reason TEXT,
-        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+        is_ai_generated INTEGER DEFAULT 0,
+        admin_warning TEXT,
+        warning_set_by_level INTEGER
       )`,
       // capes 表 —— 与 Cape.ts 模型字段完全对齐
       `CREATE TABLE IF NOT EXISTS capes (
@@ -351,7 +360,6 @@ export class SetupService {
         user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
         file_path TEXT NOT NULL,
         file_hash TEXT NOT NULL,
-        original_name TEXT,
         file_size INTEGER,
         width INTEGER,
         height INTEGER,
@@ -361,8 +369,6 @@ export class SetupService {
         permission_level TEXT DEFAULT 'private',
         is_public INTEGER DEFAULT 0,
         is_downloadable INTEGER DEFAULT 0,
-        views INTEGER DEFAULT 0,
-        likes INTEGER DEFAULT 0,
         download_count INTEGER DEFAULT 0,
         view_count INTEGER DEFAULT 0,
         approval_status TEXT DEFAULT 'pending',
@@ -370,7 +376,10 @@ export class SetupService {
         approved_at TEXT,
         rejected_by TEXT,
         rejection_reason TEXT,
-        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+        is_ai_generated INTEGER DEFAULT 0,
+        admin_warning TEXT,
+        warning_set_by_level INTEGER
       )`,
       // system_config 表
       `CREATE TABLE IF NOT EXISTS system_config (
@@ -426,6 +435,19 @@ export class SetupService {
         created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
         UNIQUE(user_id, cape_id)
       )`,
+      // oauth_accounts 表（第三方登录，对应迁移 013）
+      `CREATE TABLE IF NOT EXISTS oauth_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        provider TEXT NOT NULL CHECK (provider IN ('github', 'microsoft')),
+        provider_account_id TEXT NOT NULL,
+        access_token TEXT,
+        refresh_token TEXT,
+        created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+        updated_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(provider, provider_account_id)
+      )`,
     ]
 
     for (const sql of tables) {
@@ -460,7 +482,6 @@ export class SetupService {
         name_changed_at: 'TEXT',
       },
       skins: {
-        original_name: 'TEXT',
         model_type: "TEXT DEFAULT 'default'",
         file_size: 'INTEGER',
         width: 'INTEGER',
@@ -471,8 +492,6 @@ export class SetupService {
         permission_level: "TEXT DEFAULT 'private'",
         is_public: 'INTEGER DEFAULT 0',
         is_downloadable: 'INTEGER DEFAULT 0',
-        views: 'INTEGER DEFAULT 0',
-        likes: 'INTEGER DEFAULT 0',
         download_count: 'INTEGER DEFAULT 0',
         view_count: 'INTEGER DEFAULT 0',
         approval_status: "TEXT DEFAULT 'pending'",
@@ -480,9 +499,11 @@ export class SetupService {
         approved_at: 'TEXT',
         rejected_by: 'TEXT',
         rejection_reason: 'TEXT',
+        is_ai_generated: 'INTEGER DEFAULT 0',
+        admin_warning: 'TEXT',
+        warning_set_by_level: 'INTEGER',
       },
       capes: {
-        original_name: 'TEXT',
         file_size: 'INTEGER',
         width: 'INTEGER',
         height: 'INTEGER',
@@ -492,8 +513,6 @@ export class SetupService {
         permission_level: "TEXT DEFAULT 'private'",
         is_public: 'INTEGER DEFAULT 0',
         is_downloadable: 'INTEGER DEFAULT 0',
-        views: 'INTEGER DEFAULT 0',
-        likes: 'INTEGER DEFAULT 0',
         download_count: 'INTEGER DEFAULT 0',
         view_count: 'INTEGER DEFAULT 0',
         approval_status: "TEXT DEFAULT 'pending'",
@@ -501,6 +520,9 @@ export class SetupService {
         approved_at: 'TEXT',
         rejected_by: 'TEXT',
         rejection_reason: 'TEXT',
+        is_ai_generated: 'INTEGER DEFAULT 0',
+        admin_warning: 'TEXT',
+        warning_set_by_level: 'INTEGER',
       },
     }
 

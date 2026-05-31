@@ -5,6 +5,7 @@ import { SkinModel } from '../../models/Skin';
 import { CapeModel } from '../../models/Cape';
 import { signTextures } from '../../utils/crypto';
 import { TexturesProperty } from '../../types/yggdrasil';
+import { StorageService } from '../../services/StorageService';
 
 const router = Router();
 
@@ -138,7 +139,7 @@ router.get('/session/minecraft/profile/:uuid', async (req: Request, res: Respons
         const skin = await SkinModel.findById(profile.skin_id);
         if (skin && (skin.is_public || skin.is_downloadable)) {
           textures.SKIN = {
-            url: `${process.env.BASE_URL || 'http://localhost:3000'}/${skin.file_path.replace(/^\.\//, '')}`,
+            url: StorageService.getFileUrl(skin.file_path),
             metadata: {
               model: skin.model_type === 'slim' ? 'slim' : 'default',
             },
@@ -150,7 +151,7 @@ router.get('/session/minecraft/profile/:uuid', async (req: Request, res: Respons
         const cape = await CapeModel.findById(profile.cape_id);
         if (cape && (cape.is_public || cape.is_downloadable)) {
           textures.CAPE = {
-            url: `${process.env.BASE_URL || 'http://localhost:3000'}/${cape.file_path.replace(/^\.\//, '')}`,
+            url: StorageService.getFileUrl(cape.file_path),
           };
         }
       }
@@ -183,7 +184,7 @@ router.get('/session/minecraft/profile/:uuid', async (req: Request, res: Respons
         const skin = await SkinModel.findById(profile.skin_id);
         if (skin && (skin.is_public || skin.is_downloadable)) {
           textures.SKIN = {
-            url: `${process.env.BASE_URL || 'http://localhost:3000'}/${skin.file_path.replace(/^\.\//, '')}`,
+            url: StorageService.getFileUrl(skin.file_path),
             metadata: {
               model: skin.model_type === 'slim' ? 'slim' : 'default',
             },
@@ -195,7 +196,7 @@ router.get('/session/minecraft/profile/:uuid', async (req: Request, res: Respons
         const cape = await CapeModel.findById(profile.cape_id);
         if (cape && (cape.is_public || cape.is_downloadable)) {
           textures.CAPE = {
-            url: `${process.env.BASE_URL || 'http://localhost:3000'}/${cape.file_path.replace(/^\.\//, '')}`,
+            url: StorageService.getFileUrl(cape.file_path),
           };
         }
       }
