@@ -233,10 +233,12 @@ java -jar -javaagent:authlib-injector.jar=https://skin.example.com \
 ## 安全特性
 
 - 密码 bcrypt 加密
+- 会话令牌经 httpOnly + SameSite Cookie 下发（前端不持久化 token，缓解 XSS 窃取）
 - RSA 密钥对签名验证（textures 属性）
-- 速率限制（登录、上传）
-- PNG 图片格式验证 + SHA-256 去重
+- 速率限制（登录、注册、上传、验证码）
+- PNG 图片格式验证 + 重编码剥离元数据 + SHA-256 去重（按用户范围，防越权改写）
 - 文件大小限制（≤1MB）+ 尺寸检查（64x32 或 64x64）
+- S3 代理路径白名单 + 目录穿越防护
 - Helmet.js 安全头 + CORS 配置
 
 ---
@@ -251,9 +253,21 @@ java -jar -javaagent:authlib-injector.jar=https://skin.example.com \
 | `DB_PORT` | `5432` | PostgreSQL 端口 |
 | `DB_DATABASE` | `skin_server` | 数据库名 |
 | `PORT` | `3000` | 服务端口 |
+| `BASE_URL` | `http://localhost:3000` | 站点对外 URL（用于生成纹理 URL、OAuth 回调等） |
+| `JWT_SECRET` | （安装向导生成） | 会话签名密钥，生产环境需设长随机串 |
 | `ALLOW_REGISTRATION` | `true` | 是否允许注册 |
 | `ENABLE_CAPTCHA` | `true` | 是否启用人机验证 |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | 是否需要邮箱验证 |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | 空 | 配置后用 Cloudflare Turnstile 替代内置算术验证码 |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | 空 | 配置后启用 Microsoft 登录（获取 Minecraft 正版玩家名/UUID） |
+| `MICROSOFT_TENANT_ID` | `common` | Azure 租户；`common` 接受个人 + 组织 Microsoft 账户 |
+| `OAUTH_CALLBACK_BASE_URL` | `http://localhost:3000` | OAuth 回调基址，须与 Azure 重定向 URI 一致 |
+| `STORAGE_TYPE` | `local` | 存储方式：`local`（本地磁盘）或 `s3`（S3/MinIO/R2） |
+| `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_REGION` | 见 `.env.example` | S3 存储配置；真·AWS S3 留空 `S3_ENDPOINT` |
+| `S3_PUBLIC_URL` | 空 | 对象公开/CDN 基址；留空则经后端代理提供 |
+| `ENABLE_SWAGGER` | `false` | 是否在 `/api-docs` 启用 Swagger UI（生产建议关闭） |
+
+> 完整变量及说明见 [`.env.example`](.env.example)。
 
 ---
 
@@ -265,13 +279,18 @@ java -jar -javaagent:authlib-injector.jar=https://skin.example.com \
 - [x] 3D 皮肤预览
 - [x] 管理员面板
 - [x] 邮箱验证 + 本地人机验证
-- [ ] Cloudflare 防护集成
-  - [ ] 注册/登录等验证场景：Turnstile Managed 模式（Cloudflare 根据风险自动决定是否弹出质询）
-  - [ ] 全站其它页面：Turnstile Invisible 模式（无感运行，异常行为时触发 JS 质询）
-- [ ] OAuth 2.0（GitHub / Microsoft）
-- [ ] S3 / MinIO 对象存储
-- [ ] Swagger API 文档
-- [ ] 单元测试
+- [x] Cloudflare Turnstile 集成（注册/登录 Managed 模式，可选）
+- [ ] OAuth 2.0（Microsoft，获取 Minecraft 正版玩家名 / UUID）
+- [x] S3 / MinIO 对象存储
+- [x] Swagger API 文档（`ENABLE_SWAGGER=true` 时启用）
+- [x] 单元测试
+- [ ] 前端托管到 EdgeOne Pages（静态托管，与后端 API 分离部署）
+  - [ ] 前端 API 基址改为构建时注入（`VITE_API_BASE`），默认空值保持本地相对路径 `/api` 不变
+  - [ ] 跨站后端需配套：CORS 白名单加入 EdgeOne 域名（`credentials: true`）
+  - [ ] 跨站后端需配套：鉴权 Cookie 由 `SameSite=Lax` 改为 `SameSite=None; Secure`（强制 HTTPS），否则跨站登录态失效
+  - [ ] 评估 `SameSite=None` 带来的 CSRF 权衡（登录/上传已有额外校验）
+  - [ ] EdgeOne 构建配置：根目录 `frontend`、构建命令 `npm run build`、输出目录 `frontend/dist`
+  - [ ] 新增部署文档 `deploy/edgeone-pages.md`
 
 ---
 

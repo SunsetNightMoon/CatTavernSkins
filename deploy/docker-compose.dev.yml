@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -10,9 +8,10 @@ services:
       POSTGRES_DB: ${DB_DATABASE:-skin_server}
     ports:
       - "5432:5432"
+    # 建表由应用启动时的 SetupService / migrate 自动完成，不挂载 001 初始化脚本
+    # （否则只建到 001 旧 schema，缺 012/013 等）。
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
-      - ../database/migrations/001-init-postgres.sql:/docker-entrypoint-initdb.d/001-init-postgres.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 5s
@@ -56,8 +55,10 @@ services:
       - RSA_PRIVATE_KEY_PATH=/app/keys/private.pem
       - RSA_PUBLIC_KEY_PATH=/app/keys/public.pem
       - UPLOAD_DIR=/app/uploads
-      - HTTP_PROXY=http://host.docker.internal:10808
-      - HTTPS_PROXY=http://host.docker.internal:10808
+      # 网络代理：默认不设置；如需通过宿主机代理访问外网，
+      # 在 shell 或 .env 中导出 HTTP_PROXY / HTTPS_PROXY 即可（例如本地代理端口）。
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=localhost,127.0.0.1,backend,frontend,postgres,redis
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -82,8 +83,11 @@ services:
       - "5174:5174"
     environment:
       - VITE_PROXY_TARGET=http://backend:3000
-      - HTTP_PROXY=http://host.docker.internal:10808
-      - HTTPS_PROXY=http://host.docker.internal:10808
+      # Vite 在挂载卷上的 HMR 依赖文件轮询，默认开启以确保改动被检测到。
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
+      # 网络代理：默认不设置（见 backend 说明）。
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=localhost,127.0.0.1,backend,frontend,postgres,redis
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -61,7 +61,8 @@ minecraft-skin-server/
 │   ├── models/           # 数据模型（User, Skin, Profile, Token）
 │   ├── services/         # 业务逻辑
 │   ├── scripts/          # 工具脚本
-│   │   ├── migrate.ts    # 数据库迁移
+│   │   ├── migrate.ts    # 数据库迁移（逐文件事务化，失败回滚）
+│   │   ├── migrate_to_string_ids.ts # INTEGER→TEXT 主键迁移（自守卫/幂等，010 前自动执行）
 │   │   └── generate-keys.ts
 │   ├── types/            # TypeScript 类型定义
 │   ├── utils/            # 工具函数（crypto, image, uuid）
@@ -86,9 +87,10 @@ minecraft-skin-server/
 │       └── types/        # 类型定义
 │
 ├── database/
-│   └── migrations/
-│       ├── 001-init-sqlite.sql   # 开发用
-│       └── 001-init-postgres.sql # 生产用
+│   └── migrations/              # 编号递增的迁移文件（00N-*-sqlite.sql / -postgres.sql）
+│       ├── 001-init-sqlite.sql
+│       ├── 001-init-postgres.sql
+│       └── ...                  # 后续迁移（新增表/列、约束变更等）
 │
 ├── uploads/              # 上传文件（gitignore）
 │   ├── skins/
@@ -121,6 +123,8 @@ minecraft-skin-server/
 
 通常不需要手动操作数据库。`start.bat` 启动时会自动运行 `npm run migrate`。
 
+迁移运行器（`migrate.ts`）现在**逐文件事务化**：每个迁移文件在独立事务中执行，任意语句失败则整文件回滚，不会留下半迁移的损坏状态；`already exists` / `duplicate column name` 视为幂等跳过，可重复运行。在执行 010 之前会自动完成 INTEGER→TEXT 主键迁移（`migrate_to_string_ids.ts`，已是 TEXT 则跳过）。
+
 如需手动迁移：
 
 ```bash
@@ -129,9 +133,18 @@ npm run migrate
 
 ### 添加/修改表结构
 
-1. 编辑 `database/migrations/001-init-sqlite.sql`（开发）或 `001-init-postgres.sql`（生产）
-2. 注意两个文件的 SQL 语法差异（参考现有表结构）
-3. 运行 `npm run migrate` 测试
+> ⚠️ **不要**通过编辑 `001-init-*.sql` 来改表结构——全新安装的建表不走它（见下方说明），改了不生效。
+
+新增/修改表结构需要**两处同步**：
+
+1. **新建迁移文件**：`database/migrations/0N-描述-sqlite.sql` 和 `0N-描述-postgres.sql`（编号递增，注意两种数据库的 SQL 语法差异）。用于已有库的升级，`npm run migrate` 会按编号自动执行。
+2. **同步全新安装路径**：
+   - SQLite：编辑 `src/services/SetupService.ts` 的内联建表 DDL（`createTables()`）及 `ensureAllColumns()` 列清单。
+   - PostgreSQL：`SetupService` 会自动执行 `database/migrations/` 下全部 `-postgres.sql`，无需额外改动。
+3. 同步更新模型层 `src/models/*.ts` 的字段定义和测试 `tests/helpers/testDb.ts` 的建表 DDL。
+4. 运行 `npm run migrate` 和 `npm test` 验证。
+
+> **为什么有两条路径**：全新安装由安装向导（`SetupService`）建表；已有库升级由 `npm run migrate` 跑迁移文件。两者必须保持 schema 一致，否则会出现“迁移路径有、安装路径没有”的字段缺失。
 
 ---
 
@@ -210,7 +223,7 @@ import { PageName } from './pages/xxx/PageName'
 
 ### Q: 迁移失败
 
-删除 `data/skin_server.db`（如果是 SQLite），然后重新运行 `npm run migrate`。
+迁移运行器逐文件事务化，失败的文件会自动回滚（数据库保持不变），并在日志中打印失败文件名与错误。先看日志定位是哪个迁移文件出错并修复，然后重新运行 `npm run migrate`（迁移幂等，可安全重跑）。仅在确认数据可丢弃时，才考虑删除 `data/skin_server.db`（SQLite）后重建。
 
 ---
 

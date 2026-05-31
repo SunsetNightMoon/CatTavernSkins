@@ -53,6 +53,14 @@ docker-compose logs -f app
 | `BASE_URL` | 站点 URL | `http://localhost:3000` |
 | `REDIS_HOST` | Redis 主机 | `redis` |
 | `ALLOW_REGISTRATION` | 允许注册 | `true` |
+| `STORAGE_TYPE` | 存储方式：`local` 或 `s3` | `local` |
+| `S3_*` | S3/MinIO 配置（`STORAGE_TYPE=s3` 时） | 见 `.env.example` |
+| `MICROSOFT_CLIENT_ID` / `_SECRET` | Microsoft 登录（可选） | 空 |
+| `OAUTH_CALLBACK_BASE_URL` | OAuth 回调基址，须与 Azure 重定向 URI 一致 | `BASE_URL` |
+| `TURNSTILE_SITE_KEY` / `_SECRET_KEY` | Cloudflare Turnstile（可选） | 空 |
+| `ENABLE_SWAGGER` | `/api-docs` Swagger UI（生产建议 `false`） | `false` |
+
+> 注意：生产用 HTTPS 时 `BASE_URL` 须为 `https://`，会话 Cookie 才会带 `Secure` 标志。后端已设 `trust proxy`，反代须透传 `X-Forwarded-Proto`（下方 Nginx 配置已包含）。
 
 ### 数据持久化
 
@@ -97,6 +105,9 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
+    # 仅当 STORAGE_TYPE=local 时，可由 Nginx 直接提供静态纹理文件以减轻后端压力。
+    # ⚠️ 若 STORAGE_TYPE=s3：删除此 location，让 /uploads/ 走上面的 proxy_pass 到后端，
+    #    由后端代理路由从对象存储拉取（本地磁盘没有这些文件，alias 会导致 404）。
     location /uploads/ {
         alias /opt/minecraft-skin-server/uploads/;
         expires 30d;
@@ -227,9 +238,17 @@ sudo systemctl start skin-server
 
 ## 数据库迁移
 
-PostgreSQL 迁移文件位于 `../database/migrations/001-init-postgres.sql`。
+通常**无需手动迁移**：
+
+- 首次部署时，安装向导（`/setup`）完成初始化时会自动建表（PostgreSQL 会按编号执行 `database/migrations/` 下全部 `-postgres.sql`；SQLite 用内置 DDL）。
+- 已有部署升级时，运行 `npm run migrate` 会按编号依次执行所有迁移；每个迁移在事务中执行，失败自动回滚，可安全重复运行（幂等）。SQLite 旧库的 INTEGER 主键会在执行 010 前自动转换为字符串 ID（已是字符串则跳过）。
 
 ```bash
-# 手动运行迁移
-sudo -u postgres psql -d skin_server -f ../database/migrations/001-init-postgres.sql
+# 升级已有数据库（在容器内或项目根目录执行）
+npm run migrate
+
+# Docker 部署：
+docker-compose exec app npm run migrate
 ```
+
+> 不要再手动 `psql -f 001-init-postgres.sql` 单独导入——那会遗漏后续迁移（AI 字段、oauth_accounts 表等），导致 OAuth/AI 等功能在全新库上报错。
