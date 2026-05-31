@@ -15,7 +15,7 @@ const LICENSE_TAG_COLORS: Record<string, string> = {
   'CC_BY-NC_3.0': 'purple',
   'CC_BY-NC_4.0': 'purple',
   'ARR': 'red',
-  '': 'orange',
+  'AI_CC0': 'geekblue',
   'Custom': 'default',
 }
 

@@ -9,6 +9,7 @@ import DB from '../../config/database';
 import { comparePassword } from '../../utils/crypto';
 import { CaptchaService } from '../../services/CaptchaService';
 import { sendVerificationEmail, verifyEmailToken, sendPasswordResetEmail } from '../../services/EmailService';
+import { StorageService } from '../../services/StorageService';
 
 const router = Router();
 
@@ -29,8 +30,40 @@ const registerLimiter = rateLimit({
 });
 
 /**
- * POST /api/auth/register
- * 用户注册
+ * @openapi
+ * /api/auth/register:
+ *   post:
+ *     tags: [认证]
+ *     summary: 用户注册
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password, profile_name]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *               profile_name:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 16
+ *               captcha_session_id:
+ *                 type: string
+ *               captcha_answer:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: 注册成功
+ *       400:
+ *         description: 参数错误
+ *       409:
+ *         description: 邮箱或角色ID已存在
  */
 router.post('/register', registerLimiter, async (req: Request, res: Response) => {
   try {
@@ -42,7 +75,7 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
       });
     }
 
-    const { email, password, profile_name, captcha_session_id, captcha_answer } = req.body;
+    const { email, password, profile_name, captcha_session_id, captcha_answer, turnstile_token } = req.body;
 
     // 参数验证
     if (!email || !password || !profile_name) {
@@ -72,19 +105,37 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
 
     // 验证验证码（可通过 ENABLE_CAPTCHA=false 关闭）
     if (process.env.ENABLE_CAPTCHA !== 'false') {
-      if (!captcha_session_id || !captcha_answer) {
-        return res.status(400).json({
-          error: 'BadRequest',
-          errorMessage: '请完成人机验证',
-        });
-      }
+      if (CaptchaService.isTurnstileEnabled()) {
+        if (!turnstile_token) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '请完成人机验证',
+          });
+        }
 
-      const isCaptchaValid = await CaptchaService.verify(captcha_session_id, captcha_answer);
-      if (!isCaptchaValid) {
-        return res.status(400).json({
-          error: 'BadRequest',
-          errorMessage: '验证码错误或已过期，请重新验证',
-        });
+        const remoteIp = req.ip || req.socket.remoteAddress;
+        const isTurnstileValid = await CaptchaService.verifyTurnstile(turnstile_token, remoteIp);
+        if (!isTurnstileValid) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '人机验证失败，请重试',
+          });
+        }
+      } else {
+        if (!captcha_session_id || !captcha_answer) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '请完成人机验证',
+          });
+        }
+
+        const isCaptchaValid = await CaptchaService.verify(captcha_session_id, captcha_answer);
+        if (!isCaptchaValid) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '验证码错误或已过期，请重新验证',
+          });
+        }
       }
     }
 
@@ -180,12 +231,37 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
 });
 
 /**
- * POST /api/auth/login
- * 用户登录
+ * @openapi
+ * /api/auth/login:
+ *   post:
+ *     tags: [认证]
+ *     summary: 用户登录
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 登录成功
+ *       400:
+ *         description: 参数错误
+ *       401:
+ *         description: 邮箱或密码错误
+ *       403:
+ *         description: 账号被封禁
  */
 router.post('/login', authLimiter, async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, turnstile_token, captcha_session_id, captcha_answer } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -194,7 +270,39 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    // 查找用户
+    if (process.env.ENABLE_CAPTCHA !== 'false') {
+      if (CaptchaService.isTurnstileEnabled()) {
+        if (!turnstile_token) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '请完成人机验证',
+          });
+        }
+        const remoteIp = req.ip || req.socket.remoteAddress;
+        const isTurnstileValid = await CaptchaService.verifyTurnstile(turnstile_token, remoteIp);
+        if (!isTurnstileValid) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '人机验证失败，请重试',
+          });
+        }
+      } else {
+        if (!captcha_session_id || !captcha_answer) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '请完成验证码验证',
+          });
+        }
+        const isValid = await CaptchaService.verify(captcha_session_id, captcha_answer);
+        if (!isValid) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            errorMessage: '验证码错误',
+          });
+        }
+      }
+    }
+
     const user = await UserModel.findByEmail(email);
     if (!user) {
       return res.status(401).json({
@@ -297,8 +405,18 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/auth/me
- * 获取当前登录用户信息
+ * @openapi
+ * /api/auth/me:
+ *   get:
+ *     tags: [认证]
+ *     summary: 获取当前用户信息
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ *       401:
+ *         description: 未认证或令牌无效
  */
 router.get('/me', async (req: Request, res: Response) => {
   try {
@@ -364,8 +482,22 @@ router.get('/me', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/auth/send-verification
- * 发送邮箱验证邮件
+ * @openapi
+ * /api/auth/send-verification:
+ *   post:
+ *     tags: [认证]
+ *     summary: 发送验证邮件
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 验证邮件已发送
+ *       400:
+ *         description: 邮箱已验证
+ *       401:
+ *         description: 未认证
+ *       503:
+ *         description: 邮件服务未配置
  */
 router.post('/send-verification', async (req: Request, res: Response) => {
   try {
@@ -383,7 +515,7 @@ router.post('/send-verification', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'NotFound', errorMessage: '用户不存在' });
     }
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '邮箱已验证，无需重复操作' });
     }
 
@@ -407,8 +539,23 @@ router.post('/send-verification', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/auth/verify-email
- * 验证邮箱（点击邮件链接）
+ * @openapi
+ * /api/auth/verify-email:
+ *   get:
+ *     tags: [认证]
+ *     summary: 验证邮箱
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 邮箱验证令牌
+ *     responses:
+ *       200:
+ *         description: 验证成功
+ *       400:
+ *         description: 验证链接无效或已过期
  */
 router.get('/verify-email', async (req: Request, res: Response) => {
   try {
@@ -571,8 +718,33 @@ function renderVerifyResult(success: boolean, message: string): string {
 }
 
 /**
- * POST /api/auth/change-password
- * 修改密码（需原密码）
+ * @openapi
+ * /api/auth/change-password:
+ *   post:
+ *     tags: [认证]
+ *     summary: 修改密码
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [oldPassword, newPassword]
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *     responses:
+ *       200:
+ *         description: 密码修改成功
+ *       400:
+ *         description: 参数错误
+ *       401:
+ *         description: 原密码错误或未认证
  */
 router.post('/change-password', authLimiter, async (req: Request, res: Response) => {
   try {
@@ -730,22 +902,17 @@ router.post('/delete-account', authLimiter, async (req: Request, res: Response) 
     // 删除用户的所有相关数据
     // 1. 删除皮肤文件和数据
     const skins = await DB.query('SELECT file_path FROM skins WHERE user_id = $1', [userId]);
-    const fsPromises = require('fs/promises');
-    const pathModule = require('path');
     for (const skin of skins.rows) {
       if (skin.file_path) {
-        const filePath = pathModule.resolve(process.cwd(), skin.file_path);
-        await fsPromises.unlink(filePath).catch(() => {});
+        await StorageService.deleteFile(skin.file_path).catch(() => {});
       }
     }
     await DB.query('DELETE FROM skins WHERE user_id = $1', [userId]);
 
-    // 2. 删除披风文件和数据
     const capes = await DB.query('SELECT file_path FROM capes WHERE user_id = $1', [userId]);
     for (const cape of capes.rows) {
       if (cape.file_path) {
-        const filePath = pathModule.resolve(process.cwd(), cape.file_path);
-        await fsPromises.unlink(filePath).catch(() => {});
+        await StorageService.deleteFile(cape.file_path).catch(() => {});
       }
     }
     await DB.query('DELETE FROM capes WHERE user_id = $1', [userId]);

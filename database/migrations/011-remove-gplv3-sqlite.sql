@@ -58,10 +58,16 @@ CREATE TABLE capes_new (
   is_public INTEGER DEFAULT 0,
   is_downloadable INTEGER DEFAULT 0,
   approval_status TEXT DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+  approved_by TEXT,
+  approved_at TEXT,
+  rejected_by TEXT,
+  rejection_reason TEXT,
   download_count INTEGER DEFAULT 0,
   view_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (approved_by) REFERENCES users(id),
+  FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
 INSERT INTO capes_new SELECT * FROM capes;

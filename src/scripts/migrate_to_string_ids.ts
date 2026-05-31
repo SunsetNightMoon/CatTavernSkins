@@ -112,8 +112,8 @@ async function migrate() {
   // 复制数据
   for (const skin of skins) {
     await db.run(
-      `INSERT INTO skins_new (id, user_id, profile_id, file_path, model_type, file_hash, file_size, width, height, description, license_type, permission_level, is_public, is_downloadable, approval_status, approved_by, approved_at, rejected_by, rejection_reason, download_count, view_count, created_at, name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO skins_new (id, user_id, profile_id, file_path, model_type, file_hash, file_size, width, height, description, license_type, permission_level, is_public, is_downloadable, is_ai_generated, admin_warning, warning_set_by_level, approval_status, approved_by, approved_at, rejected_by, rejection_reason, download_count, view_count, created_at, name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         skinIdMap.get(skin.id),
         skin.user_id,

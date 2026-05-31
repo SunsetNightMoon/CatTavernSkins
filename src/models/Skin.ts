@@ -297,7 +297,7 @@ export class SkinModel {
   static async setAiGenerated(id: string, isAiGenerated: boolean): Promise<void> {
     await DB.query(
       'UPDATE skins SET is_ai_generated = $1 WHERE id = $2',
-      [isAiGenerated ? 1 : 0, id]
+      [isAiGenerated, id]
     );
   }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Button, Tag, Card, Descriptions, Spin, message, Space, Divider, Typography, Alert, Switch } from 'antd'
+import { Button, Tag, Card, Descriptions, Spin, message, Space, Divider, Typography, Alert, Switch, Modal, Input } from 'antd'
 import { ArrowLeftOutlined, DownloadOutlined, HeartOutlined, HeartFilled, StarOutlined } from '@ant-design/icons'
 import type { Skin } from '../../types'
 import { Skin3DViewer } from '../../components/Skin3DViewer/Skin3DViewer'
@@ -18,7 +18,6 @@ const LICENSE_TAG_COLORS: Record<string, string> = {
   'CC_BY-NC_3.0': 'purple',
   'CC_BY-NC_4.0': 'purple',
   'ARR': 'red',
-  '': 'orange',
   'Custom': 'default',
   'AI_CC0': 'geekblue',
 }
@@ -37,6 +36,10 @@ export function SkinDetail() {
 
   // 从后端获取收藏状态
   const [isFavoritedByUser, setIsFavoritedByUser] = useState(false)
+
+  // 管理员警告弹窗
+  const [warningModalVisible, setWarningModalVisible] = useState(false)
+  const [warningText, setWarningText] = useState('')
 
   // 当前用户是否为发布者
   const isUploader = user ? Number(user.user_uid) === Number(skin?.user_uid) : false
@@ -170,6 +173,24 @@ export function SkinDetail() {
       loadFavoriteStatus()
     } catch (error: any) {
       message.error(error.message || '操作失败')
+    }
+  }
+
+  const handleAddWarning = async () => {
+    if (!warningText.trim()) return
+    try {
+      const res = await fetch(`/api/admin/skins/${skinId}/warning`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ warning: warningText.trim() })
+      })
+      if (!res.ok) throw new Error('添加失败')
+      setSkin(prev => prev ? { ...prev, admin_warning: warningText.trim(), warning_set_by_level: user?.level } : null)
+      message.success('已添加警告')
+    } catch (e: any) {
+      message.error(e.message || '操作失败')
+    } finally {
+      setWarningModalVisible(false)
     }
   }
 
@@ -334,21 +355,9 @@ export function SkinDetail() {
                     }
                   }}>移除警告</Button>
                 ) : (
-                  <Button size="small" danger onClick={async () => {
-                    const w = prompt('输入警告内容：');
-                    if (!w) return;
-                    try {
-                      const res = await fetch(`/api/admin/skins/${skin.id}/warning`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ warning: w })
-                      });
-                      if (!res.ok) throw new Error('添加失败');
-                      setSkin({ ...skin, admin_warning: w, warning_set_by_level: user.level });
-                      message.success('已添加警告');
-                    } catch (e: any) {
-                      message.error(e.message || '操作失败');
-                    }
+                  <Button size="small" danger onClick={() => {
+                    setWarningText('');
+                    setWarningModalVisible(true);
                   }}>添加警告</Button>
                 )}
               </>
@@ -376,6 +385,23 @@ export function SkinDetail() {
           )}
         </div>
       </div>
+
+      <Modal
+        title="添加管理员警告"
+        open={warningModalVisible}
+        onOk={handleAddWarning}
+        onCancel={() => setWarningModalVisible(false)}
+        okText="确认添加"
+        cancelText="取消"
+        destroyOnClose
+      >
+        <Input.TextArea
+          rows={4}
+          placeholder="输入警告内容..."
+          value={warningText}
+          onChange={e => setWarningText(e.target.value)}
+        />
+      </Modal>
     </div>
   )
 }

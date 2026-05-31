@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Form, Upload, Select, Input, Button, message, Radio, Alert, Tabs } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface'
 import { Skin3DViewer } from '../../components/Skin3DViewer/Skin3DViewer'
+import { TurnstileWidget } from '../../components/TurnstileWidget/TurnstileWidget'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 const LICENSE_OPTIONS = [
@@ -42,6 +43,32 @@ function SkinTab() {
   const [loading, setLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedLicense, setSelectedLicense] = useState<string>('')
+  const [captchaType, setCaptchaType] = useState<'turnstile' | 'math' | 'none'>('none')
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('')
+
+  useEffect(() => {
+    const fetchCaptchaType = async () => {
+      try {
+        const response = await fetch('/api/captcha/captcha-type')
+        const data = await response.json()
+        setCaptchaType(data.type)
+        if (data.type === 'turnstile' && data.siteKey) {
+          setTurnstileSiteKey(data.siteKey)
+        }
+      } catch {}
+    }
+    fetchCaptchaType()
+  }, [])
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token)
+  }, [])
+
+  const handleTurnstileError = useCallback((error: string) => {
+    message.error(error)
+    setTurnstileToken('')
+  }, [])
 
   // 选择公有领域协议时，禁止"公开不可下载"，自动切换到"公开可下载"
   useEffect(() => {
@@ -72,6 +99,10 @@ function SkinTab() {
 
   const onFinish = async (values: any) => {
     if (!file) { message.error('请上传皮肤文件'); return }
+    if (captchaType === 'turnstile' && !turnstileToken) {
+      message.error('请等待人机验证完成')
+      return
+    }
     setLoading(true)
     try {
       const formData = new FormData()
@@ -81,6 +112,10 @@ function SkinTab() {
       formData.append('description', values.description || '')
       formData.append('license_type', values.license_type)
       formData.append('permission_level', values.permission_level)
+
+      if (captchaType === 'turnstile' && turnstileToken) {
+        formData.append('turnstile_token', turnstileToken)
+      }
 
       const authStorage = localStorage.getItem('auth-storage')
       const token = authStorage ? JSON.parse(authStorage).state.token : null
@@ -99,6 +134,9 @@ function SkinTab() {
         if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
       } else {
         message.error(data.errorMessage || '上传失败')
+        if (captchaType === 'turnstile') {
+          setTurnstileToken('')
+        }
       }
     } catch { message.error('网络错误') }
     finally { setLoading(false) }
@@ -194,6 +232,15 @@ function SkinTab() {
               </Radio.Group>
             </Form.Item>
 
+            {captchaType === 'turnstile' && (
+              <TurnstileWidget
+                siteKey={turnstileSiteKey}
+                mode="invisible"
+                onVerify={handleTurnstileVerify}
+                onError={handleTurnstileError}
+              />
+            )}
+
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">
                 上传皮肤
@@ -213,6 +260,32 @@ function CapeTab() {
   const [loading, setLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedLicense, setSelectedLicense] = useState<string>('ARR')
+  const [captchaType, setCaptchaType] = useState<'turnstile' | 'math' | 'none'>('none')
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('')
+
+  useEffect(() => {
+    const fetchCaptchaType = async () => {
+      try {
+        const response = await fetch('/api/captcha/captcha-type')
+        const data = await response.json()
+        setCaptchaType(data.type)
+        if (data.type === 'turnstile' && data.siteKey) {
+          setTurnstileSiteKey(data.siteKey)
+        }
+      } catch {}
+    }
+    fetchCaptchaType()
+  }, [])
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token)
+  }, [])
+
+  const handleTurnstileError = useCallback((error: string) => {
+    message.error(error)
+    setTurnstileToken('')
+  }, [])
 
   // 选择公有领域协议时，禁止"公开不可下载"，自动切换到"公开可下载"
   useEffect(() => {
@@ -241,6 +314,10 @@ function CapeTab() {
 
   const onFinish = async (values: any) => {
     if (!file) { message.error('请上传披风文件'); return }
+    if (captchaType === 'turnstile' && !turnstileToken) {
+      message.error('请等待人机验证完成')
+      return
+    }
     setLoading(true)
     try {
       const formData = new FormData()
@@ -249,6 +326,10 @@ function CapeTab() {
       formData.append('description', values.description || '')
       formData.append('license_type', values.license_type || 'ARR')
       formData.append('permission_level', values.permission_level || 'private')
+
+      if (captchaType === 'turnstile' && turnstileToken) {
+        formData.append('turnstile_token', turnstileToken)
+      }
 
       const authStorage = localStorage.getItem('auth-storage')
       const token = authStorage ? JSON.parse(authStorage).state.token : null
@@ -267,6 +348,9 @@ function CapeTab() {
         if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
       } else {
         message.error(data.errorMessage || '上传失败')
+        if (captchaType === 'turnstile') {
+          setTurnstileToken('')
+        }
       }
     } catch { message.error('网络错误') }
     finally { setLoading(false) }
@@ -346,6 +430,15 @@ function CapeTab() {
                 })}
               </Radio.Group>
             </Form.Item>
+
+            {captchaType === 'turnstile' && (
+              <TurnstileWidget
+                siteKey={turnstileSiteKey}
+                mode="invisible"
+                onVerify={handleTurnstileVerify}
+                onError={handleTurnstileError}
+              />
+            )}
 
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">

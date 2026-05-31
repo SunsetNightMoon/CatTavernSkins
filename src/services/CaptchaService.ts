@@ -1,17 +1,12 @@
-/**
- * 验证码服务
- * 使用内存存储，无需 Redis，适合开发环境
- */
+import { TurnstileService } from './TurnstileService';
 
 interface CaptchaEntry {
   answer: string;
   expiresAt: number;
 }
 
-// 内存存储（生产环境建议使用 Redis 或数据库）
 const captchaStore = new Map<string, CaptchaEntry>();
 
-// 清理过期验证码（每小时清理一次）
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of captchaStore.entries()) {
@@ -22,10 +17,14 @@ setInterval(() => {
 }, 3600000);
 
 export class CaptchaService {
-  /**
-   * 生成验证码（算术题）
-   * 使用简单算术题，无外部依赖，响应快速
-   */
+  static isTurnstileEnabled(): boolean {
+    return TurnstileService.isTurnstileConfigured();
+  }
+
+  static async verifyTurnstile(token: string, remoteIp?: string): Promise<boolean> {
+    return TurnstileService.verifyTurnstileToken(token, remoteIp);
+  }
+
   static async generate(sessionId: string): Promise<{ question: string }> {
     const num1 = Math.floor(Math.random() * 90) + 10;
     const num2 = Math.floor(Math.random() * 90) + 10;

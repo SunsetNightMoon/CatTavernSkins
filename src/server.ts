@@ -22,29 +22,12 @@ app.listen(PORT, HOST, () => {
 
   服务器启动成功！
   监听地址: ${HOST}:${PORT}
-  环境: ${process.env.NODE_ENV || 'development'}
+  环境: ${process.env.NODE_ENV || 'development'}`);
 
-  可用端点:
-    - GET  /                          元数据API
-    - POST /authserver/authenticate   认证
-    - POST /authserver/refresh        刷新令牌
-    - POST /authserver/validate       验证令牌
-    - POST /authserver/invalidate    吊销令牌
-    - POST /authserver/signout       登出
-    - POST /sessionserver/session/minecraft/join
-    - GET  /sessionserver/session/minecraft/hasJoined
-    - GET  /sessionserver/session/minecraft/profile/:uuid
-    - POST /api/profiles/minecraft
-    - PUT  /api/user/profile/:uuid/:textureType
-    - DELETE /api/user/profile/:uuid/:textureType
-    - POST /api/setup/init            初始化
-    - POST /api/auth/register       注册
-    - POST /api/auth/login          登录
-    - GET  /api/library/skins       皮肤库
-    - POST /api/skins/upload        上传皮肤
-
-  文档: https://github.com/your-repo/minecraft-skin-server
-  `);
+  // 启动后执行主题图片迁移（不阻塞启动）
+  import('./api/web/admin').then(({ migrateThemeImages }) => {
+    migrateThemeImages().catch(err => console.error('[migrate] 主题图片迁移失败:', err));
+  });
 });
 
 // 优雅退出

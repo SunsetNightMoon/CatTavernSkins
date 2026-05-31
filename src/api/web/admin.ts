@@ -182,7 +182,33 @@ router.get('/stats/daily', requireAuth, requireAdmin, async (req: Request, res: 
 });
 
 /**
- * 获取用户列表
+ * @openapi
+ * /api/admin/users:
+ *   get:
+ *     tags: [管理员]
+ *     summary: 获取用户列表
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: 每页数量
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 偏移量
+ *     responses:
+ *       200:
+ *         description: 成功返回用户列表
+ *       401:
+ *         description: 未认证
+ *       403:
+ *         description: 权限不足
  */
 router.get('/users', requireAuth, requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -499,9 +525,42 @@ router.post('/users/:id/ban', requireAuth, requireAdmin, async (req: Request, re
 });
 
 /**
- * 更新用户角色（等级）
- * PUT /api/admin/users/:id/role
- * body: { level: number }
+ * @openapi
+ * /api/admin/users/{id}/role:
+ *   put:
+ *     tags: [管理员]
+ *     summary: 更新用户信息
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 用户 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [level]
+ *             properties:
+ *               level:
+ *                 type: integer
+ *                 description: 用户等级
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ *       400:
+ *         description: 参数错误
+ *       401:
+ *         description: 未认证
+ *       403:
+ *         description: 权限不足
+ *       404:
+ *         description: 用户不存在
  */
 router.put('/users/:id/role', requireAuth, requireSuperAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -1072,11 +1131,11 @@ router.put('/users/:id/verify-email', requireAuth, requireAdmin, async (req: Req
     }
 
     // 已验证则无需操作
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '该用户邮箱已验证' });
     }
 
-    await DB.query('UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
+    await DB.query('UPDATE users SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
 
     res.json({ message: '邮箱已手动验证' });
   } catch (error) {
@@ -1097,7 +1156,7 @@ router.post('/users/:id/send-verification', requireAuth, requireAdmin, async (re
       return res.status(404).json({ error: 'NotFound', errorMessage: '用户不存在' });
     }
 
-    if (user.email_verified === 1) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'BadRequest', errorMessage: '该用户邮箱已验证' });
     }
 
@@ -1472,7 +1531,7 @@ export default router;
 // ============================================================
 // 启动迁移：将 bg/ 中的旧文件迁移到分类文件夹
 // ============================================================
-async function migrateThemeImages() {
+export async function migrateThemeImages() {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
@@ -1563,6 +1622,4 @@ async function migrateThemeImages() {
   }
 }
 
-// 启动时执行迁移（不阻塞启动）
-migrateThemeImages().catch(() => {});
 

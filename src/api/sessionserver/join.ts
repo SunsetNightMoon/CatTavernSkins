@@ -84,8 +84,28 @@ router.get('/session/minecraft/hasJoined', async (req: Request, res: Response) =
 });
 
 /**
- * GET /sessionserver/session/minecraft/profile/:uuid
- * 查询角色属性（皮肤/披风）
+ * @openapi
+ * /sessionserver/session/minecraft/profile/{uuid}:
+ *   get:
+ *     tags: [Session服务]
+ *     summary: 获取玩家 Profile
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 角色 UUID
+ *       - in: query
+ *         name: unsigned
+ *         schema:
+ *           type: string
+ *         description: 是否返回未签名数据
+ *     responses:
+ *       200:
+ *         description: 成功返回玩家 Profile
+ *       204:
+ *         description: 角色不存在
  */
 router.get('/session/minecraft/profile/:uuid', async (req: Request, res: Response) => {
   try {
