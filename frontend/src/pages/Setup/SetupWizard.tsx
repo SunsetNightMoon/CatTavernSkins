@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Form, Input, message, Radio } from 'antd';
-import { CheckOutlined, RightOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Dropdown, Form, Input, message, Radio } from 'antd';
+import { CheckOutlined, GlobalOutlined, RightOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 
 interface SetupData {
   siteName: string;
@@ -25,17 +27,8 @@ interface SetupData {
   confirmPassword: string;
 }
 
-const STEPS = [
-  { number: 1, title: '欢迎' },
-  { number: 2, title: '站点配置' },
-  { number: 3, title: '数据库设置' },
-  { number: 4, title: 'Redis 缓存' },
-  { number: 5, title: '邮箱设置' },
-  { number: 6, title: '管理员账户' },
-  { number: 7, title: '确认' },
-];
-
 export default function SetupWizard() {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,6 +55,16 @@ export default function SetupWizard() {
   });
   const [form] = Form.useForm();
 
+  const steps = [
+    { number: 1, title: t('setup.steps.welcome') },
+    { number: 2, title: t('setup.steps.site') },
+    { number: 3, title: t('setup.steps.db') },
+    { number: 4, title: t('setup.steps.redis') },
+    { number: 5, title: t('setup.steps.email') },
+    { number: 6, title: t('setup.steps.admin') },
+    { number: 7, title: t('setup.steps.confirm') },
+  ];
+
   const goNext = () => {
     const fieldsToValidate: string[] = [];
     if (step === 1) {
@@ -80,10 +83,6 @@ export default function SetupWizard() {
       }
     }
     if (step === 4) {
-      // Redis 设置：启用时需要验证连接
-      if (data.redisEnabled) {
-        // 不在这里验证，让用户点"测试连接"按钮
-      }
       setStep(5);
       setAnimKey(k => k + 1);
       return;
@@ -120,7 +119,7 @@ export default function SetupWizard() {
     try {
       const res = await fetch('/api/setup/test-db', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Language': i18n.language },
         body: JSON.stringify({
           db_type: data.dbType,
           db_host: values.dbHost || data.dbHost,
@@ -130,14 +129,14 @@ export default function SetupWizard() {
           db_password: values.dbPassword || data.dbPassword,
         }),
       });
-      const body = await res.json().catch(() => ({ success: false, message: '未知错误' }));
+      const body = await res.json().catch(() => ({ success: false, message: t('setup.unknownError') }));
       if (body.success) {
         message.success(body.message);
       } else {
         message.error(body.message);
       }
     } catch (e: any) {
-      message.error(e.message || '测试失败');
+      message.error(e.message || t('setup.testFailed'));
     } finally {
       setTestingDb(false);
     }
@@ -149,7 +148,7 @@ export default function SetupWizard() {
     try {
       const res = await fetch('/api/setup/test-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Language': i18n.language },
         body: JSON.stringify({
           mail_host: values.mailHost || data.mailHost,
           mail_port: values.mailPort || data.mailPort,
@@ -158,14 +157,14 @@ export default function SetupWizard() {
           mail_from: values.mailFrom || data.mailFrom,
         }),
       });
-      const body = await res.json().catch(() => ({ success: false, message: '未知错误' }));
+      const body = await res.json().catch(() => ({ success: false, message: t('setup.unknownError') }));
       if (body.success) {
         message.success(body.message);
       } else {
         message.error(body.message);
       }
     } catch (e: any) {
-      message.error(e.message || '测试失败');
+      message.error(e.message || t('setup.testFailed'));
     } finally {
       setTestingMail(false);
     }
@@ -177,21 +176,21 @@ export default function SetupWizard() {
     try {
       const res = await fetch('/api/setup/test-redis', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Language': i18n.language },
         body: JSON.stringify({
           redis_host: values.redisHost || data.redisHost,
           redis_port: values.redisPort || data.redisPort,
           redis_password: values.redisPassword || data.redisPassword,
         }),
       });
-      const body = await res.json().catch(() => ({ success: false, message: '未知错误' }));
+      const body = await res.json().catch(() => ({ success: false, message: t('setup.unknownError') }));
       if (body.success) {
         message.success(body.message);
       } else {
         message.error(body.message);
       }
     } catch (e: any) {
-      message.error(e.message || '测试失败');
+      message.error(e.message || t('setup.testFailed'));
     } finally {
       setTestingRedis(false);
     }
@@ -226,18 +225,18 @@ export default function SetupWizard() {
     }
     fetch('/api/setup/complete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Language': i18n.language },
       body: JSON.stringify(payload),
     })
       .then(async (res) => {
-        const body = await res.json().catch(() => ({ success: false, error: '未知错误' }));
+        const body = await res.json().catch(() => ({ success: false, error: t('setup.unknownError') }));
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-        if (!body.success) throw new Error(body.error || '设置失败');
+        if (!body.success) throw new Error(body.error || t('setup.setupFailed'));
         setCompleted(true);
-        message.success('安装完成！');
+        message.success(t('setup.installComplete'));
       })
       .catch((err: Error) => {
-        message.error(err.message || '安装失败');
+        message.error(err.message || t('setup.installFailed'));
       })
       .finally(() => setLoading(false));
   };
@@ -248,19 +247,19 @@ export default function SetupWizard() {
         <div style={styles.topBar}>
           <div style={styles.stepItemActive}>
             <CheckOutlined style={{ marginRight: 6, fontSize: 12 }} />
-            完成
+            {t('setup.steps.confirm')}
           </div>
         </div>
         <div style={styles.content}>
-          <h1 style={styles.title}>安装完成</h1>
-          <p style={styles.subtitle}>您的皮肤服务器已经准备好使用了</p>
+          <h1 style={styles.title}>{t('setup.installComplete')}</h1>
+          <p style={styles.subtitle}>{t('setup.installCompleteDesc')}</p>
           <div style={{ flex: 1 }} />
           <div style={styles.actionArea}>
             <button
               style={styles.primaryButton}
               onClick={() => (window.location.href = '/login')}
             >
-              前往登录
+              {t('setup.goToLogin')}
             </button>
           </div>
         </div>
@@ -273,8 +272,8 @@ export default function SetupWizard() {
     <div style={styles.page}>
       <style>{`
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity:0; transform: translateY(8px); }
+          to   { opacity:1; transform: translateY(0); }
         }
         .setup-fade-in {
           animation: fadeIn 0.30s ease-out both;
@@ -316,12 +315,25 @@ export default function SetupWizard() {
           border-color: #0078d7 !important;
           background: #0078d7 !important;
         }
+        .ant-dropdown-menu {
+          border-radius: 0 !important;
+          padding: 0 !important;
+        }
+        .ant-dropdown-menu-item {
+          border-radius: 0 !important;
+        }
+        .ant-dropdown-menu-item:hover {
+          background: #0078d7 !important;
+        }
+        .ant-dropdown-menu-item:hover span {
+          color: #fff !important;
+        }
       `}</style>
 
       {/* 顶部导航条 */}
       <div style={styles.topBar}>
         <div style={{ display: 'flex', gap: 0 }}>
-          {STEPS.map((s) => (
+          {steps.map((s) => (
             <div
               key={s.number}
               style={step === s.number ? styles.stepItemActive : styles.stepItem}
@@ -345,26 +357,23 @@ export default function SetupWizard() {
         {/* 步骤1：欢迎 */}
         {step === 1 && (
           <>
-            <h1 style={styles.title}>欢迎使用皮肤服务器安装向导</h1>
-            <p style={styles.subtitle}>
-              此向导将引导您完成服务器的初始配置。<br />
-              整个过程只需几分钟。
-            </p>
+            <h1 style={styles.title}>{t('setup.welcome')}</h1>
+            <p style={styles.subtitle} dangerouslySetInnerHTML={{ __html: t('setup.welcomeDesc') }} />
           </>
         )}
 
         {/* 步骤2：站点配置 */}
         {step === 2 && (
           <>
-            <h1 style={styles.title}>配置站点信息</h1>
+            <h1 style={styles.title}>{t('setup.siteConfig')}</h1>
             <Form form={form} layout="vertical" initialValues={{ siteName: data.siteName }} style={{ width: '100%' }}>
               <Form.Item
-                label="站点名称"
+                label={t('setup.siteName')}
                 name="siteName"
-                rules={[{ required: true, message: '请输入站点名称' }]}
+                rules={[{ required: true, message: t('setup.validation.siteNameRequired') }]}
                 style={{ marginBottom: 32 }}
               >
-                <Input placeholder="例如：我的皮肤站" size="large" style={styles.input} />
+                <Input placeholder={t('setup.siteNamePlaceholder')} size="large" style={styles.input} />
               </Form.Item>
             </Form>
           </>
@@ -373,60 +382,60 @@ export default function SetupWizard() {
         {/* 步骤3：数据库设置 */}
         {step === 3 && (
           <>
-            <h1 style={styles.title}>配置数据库</h1>
+            <h1 style={styles.title}>{t('setup.dbConfig')}</h1>
             <Form form={form} layout="vertical" initialValues={{ dbType: data.dbType, dbPort: data.dbPort || 5432 }} style={{ width: '100%' }}>
-              <Form.Item label="数据库类型" style={{ marginBottom: 32 }}>
+              <Form.Item label={t('setup.dbType')} style={{ marginBottom: 32 }}>
                 <Radio.Group
                   value={data.dbType}
                   onChange={(e) => setData((prev) => ({ ...prev, dbType: e.target.value }))}
                   style={{ color: '#fff' }}
                 >
-                  <Radio value="sqlite" style={{ color: '#fff', marginRight: 32 }}>SQLite（推荐）</Radio>
-                  <Radio value="postgresql" style={{ color: '#fff' }}>PostgreSQL</Radio>
+                  <Radio value="sqlite" style={{ color: '#fff', marginRight: 32 }}>{t('setup.sqlite')}</Radio>
+                  <Radio value="postgresql" style={{ color: '#fff' }}>{t('setup.postgresql')}</Radio>
                 </Radio.Group>
               </Form.Item>
 
               {data.dbType === 'postgresql' && (
                 <>
                   <Form.Item
-                    label="数据库主机"
+                    label={t('setup.dbHost')}
                     name="dbHost"
-                    rules={[{ required: true, message: '请输入数据库主机' }]}
+                    rules={[{ required: true, message: t('setup.validation.dbHostRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input placeholder="localhost" size="large" style={styles.input} />
+                    <Input placeholder={t('setup.dbHostPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <Form.Item
-                    label="端口"
+                    label={t('setup.dbPort')}
                     name="dbPort"
-                    rules={[{ required: true, message: '请输入端口' }]}
+                    rules={[{ required: true, message: t('setup.validation.dbPortRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input type="number" placeholder="5432" size="large" style={styles.input} />
+                    <Input type="number" placeholder={t('setup.dbPortPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <Form.Item
-                    label="数据库名称"
+                    label={t('setup.dbName')}
                     name="dbName"
-                    rules={[{ required: true, message: '请输入数据库名称' }]}
+                    rules={[{ required: true, message: t('setup.validation.dbNameRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input placeholder="skin_server" size="large" style={styles.input} />
+                    <Input placeholder={t('setup.dbNamePlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <Form.Item
-                    label="用户名"
+                    label={t('setup.dbUser')}
                     name="dbUser"
-                    rules={[{ required: true, message: '请输入用户名' }]}
+                    rules={[{ required: true, message: t('setup.validation.dbUserRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input placeholder="postgres" size="large" style={styles.input} />
+                    <Input placeholder={t('setup.dbUserPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <Form.Item
-                    label="密码"
+                    label={t('setup.dbPassword')}
                     name="dbPassword"
-                    rules={[{ required: true, message: '请输入密码' }]}
+                    rules={[{ required: true, message: t('setup.validation.dbPasswordRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input.Password placeholder="******" size="large" style={styles.input} />
+                    <Input.Password placeholder={t('setup.dbPasswordPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <div style={{ marginBottom: 20 }}>
                     <button
@@ -436,15 +445,15 @@ export default function SetupWizard() {
                       disabled={testingDb}
                     >
                       <ThunderboltOutlined style={{ marginRight: 6, fontSize: 12 }} />
-                      {testingDb ? '测试中...' : '测试连接'}
+                      {testingDb ? t('setup.testing') : t('setup.testConnection')}
                     </button>
                   </div>
                 </>
-              )}
+            )}
 
               {data.dbType === 'sqlite' && (
                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
-                  将使用 SQLite 数据库，数据文件保存在服务器本地，无需额外配置。
+                  {t('setup.sqliteHint')}
                 </p>
               )}
             </Form>
@@ -454,49 +463,49 @@ export default function SetupWizard() {
         {/* 步骤4：Redis 缓存设置 */}
         {step === 4 && (
           <>
-            <h1 style={styles.title}>配置 Redis 缓存（可选）</h1>
-            <p style={styles.subtitle}>启用 Redis 可以提升网站访问速度，不启用则使用内存缓存。</p>
+            <h1 style={styles.title}>{t('setup.redisTitle')}</h1>
+            <p style={styles.subtitle}>{t('setup.redisDesc')}</p>
             <Form form={form} layout="vertical" initialValues={{
               redisEnabled: data.redisEnabled,
               redisHost: data.redisHost,
               redisPort: data.redisPort,
               redisPassword: data.redisPassword,
             }} style={{ width: '100%' }}>
-              <Form.Item label="启用 Redis 缓存" style={{ marginBottom: 24 }}>
+              <Form.Item label={t('setup.redisEnable')} style={{ marginBottom: 24 }}>
                 <Radio.Group
                   value={data.redisEnabled}
                   onChange={(e) => setData((prev) => ({ ...prev, redisEnabled: e.target.value }))}
                   style={{ color: '#fff' }}
                 >
-                  <Radio value={true} style={{ color: '#fff', marginRight: 32 }}>启用</Radio>
-                  <Radio value={false} style={{ color: '#fff' }}>不启用</Radio>
+                  <Radio value={true} style={{ color: '#fff', marginRight: 32 }}>{t('setup.redisEnableYes')}</Radio>
+                  <Radio value={false} style={{ color: '#fff' }}>{t('setup.redisEnableNo')}</Radio>
                 </Radio.Group>
               </Form.Item>
 
               {data.redisEnabled && (
                 <>
                   <Form.Item
-                    label="Redis 主机"
+                    label={t('setup.redisHost')}
                     name="redisHost"
-                    rules={[{ required: true, message: '请输入 Redis 主机' }]}
+                    rules={[{ required: true, message: t('setup.validation.redisHostRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input placeholder="localhost" size="large" style={styles.input} />
+                    <Input placeholder={t('setup.redisHostPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <Form.Item
-                    label="端口"
+                    label={t('setup.redisPort')}
                     name="redisPort"
-                    rules={[{ required: true, message: '请输入端口' }]}
+                    rules={[{ required: true, message: t('setup.validation.redisPortRequired') }]}
                     style={{ marginBottom: 20 }}
                   >
-                    <Input type="number" placeholder="6379" size="large" style={styles.input} />
+                    <Input type="number" placeholder={t('setup.redisPortPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <Form.Item
-                    label="密码（可选）"
+                    label={t('setup.redisPassword')}
                     name="redisPassword"
                     style={{ marginBottom: 20 }}
                   >
-                    <Input.Password placeholder="留空表示无密码" size="large" style={styles.input} />
+                    <Input.Password placeholder={t('setup.redisPasswordPlaceholder')} size="large" style={styles.input} />
                   </Form.Item>
                   <div style={{ marginBottom: 20 }}>
                     <button
@@ -506,74 +515,73 @@ export default function SetupWizard() {
                       disabled={testingRedis}
                     >
                       <ThunderboltOutlined style={{ marginRight: 6, fontSize: 12 }} />
-                      {testingRedis ? '测试中...' : '测试连接'}
+                      {testingRedis ? t('setup.testing') : t('setup.testConnection')}
                     </button>
                   </div>
                 </>
-              )}
+            )}
 
               {!data.redisEnabled && (
                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
-                  不启用 Redis 缓存，系统将使用内存缓存，重启后缓存清空。适合个人或小流量站点。
+                  {t('setup.redisNoHint')}
                 </p>
               )}
             </Form>
           </>
         )}
 
-        {/* 步骤5：邮箱设置（网易邮箱模板） */}
+        {/* 步骤5：邮箱设置 */}
         {step === 5 && (
           <>
-            <h1 style={styles.title}>配置邮箱服务</h1>
-            <p style={styles.subtitle}>用于发送验证邮件和密码重置邮件，已预填网易邮箱格式。</p>
+            <h1 style={styles.title}>{t('setup.mailTitle')}</h1>
+            <p style={styles.subtitle}>{t('setup.mailDesc')}</p>
             <Form form={form} layout="vertical" initialValues={{
               mailHost: data.mailHost,
               mailPort: data.mailPort,
-              mailUser: data.mailUser,
               mailFrom: data.mailFrom,
             }} style={{ width: '100%' }}>
               <Form.Item
-                label="SMTP 服务器"
+                label={t('setup.smtpServer')}
                 name="mailHost"
-                rules={[{ required: true, message: '请输入 SMTP 服务器' }]}
+                rules={[{ required: true, message: t('setup.validation.mailHostRequired') }]}
                 style={{ marginBottom: 20 }}
               >
-                <Input placeholder="smtp.163.com" size="large" style={styles.input} />
+                <Input placeholder={t('setup.smtpServerPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
               <Form.Item
-                label="SMTP 端口"
+                label={t('setup.smtpPort')}
                 name="mailPort"
-                rules={[{ required: true, message: '请输入端口' }]}
+                rules={[{ required: true, message: t('setup.validation.mailPortRequired') }]}
                 style={{ marginBottom: 20 }}
               >
-                <Input type="number" placeholder="465" size="large" style={styles.input} />
+                <Input type="number" placeholder={t('setup.smtpPortPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
               <Form.Item
-                label="发件人邮箱"
+                label={t('setup.senderEmail')}
                 name="mailFrom"
                 rules={[
-                  { required: true, message: '请输入发件人邮箱' },
-                  { type: 'email', message: '邮箱格式不正确' },
+                  { required: true, message: t('setup.validation.mailFromRequired') },
+                  { type: 'email', message: t('setup.validation.emailInvalid') },
                 ]}
                 style={{ marginBottom: 20 }}
               >
-                <Input placeholder="yourname@163.com" size="large" style={styles.input} />
+                <Input placeholder={t('setup.senderEmailPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
               <Form.Item
-                label="SMTP 用户名"
+                label={t('setup.smtpUser')}
                 name="mailUser"
-                rules={[{ required: true, message: '请输入 SMTP 用户名' }]}
+                rules={[{ required: true, message: t('setup.validation.mailUserRequired') }]}
                 style={{ marginBottom: 20 }}
               >
-                <Input placeholder="yourname@163.com" size="large" style={styles.input} />
+                <Input placeholder={t('setup.smtpUserPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
               <Form.Item
-                label="SMTP 授权码"
+                label={t('setup.smtpPass')}
                 name="mailPass"
-                rules={[{ required: true, message: '请输入 SMTP 授权码' }]}
+                rules={[{ required: true, message: t('setup.validation.mailPassRequired') }]}
                 style={{ marginBottom: 20 }}
               >
-                <Input.Password placeholder="在网易邮箱设置中获取" size="large" style={styles.input} />
+                <Input.Password placeholder={t('setup.smtpPassPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
               <div style={{ marginBottom: 20 }}>
                 <button
@@ -583,7 +591,7 @@ export default function SetupWizard() {
                   disabled={testingMail}
                 >
                   <ThunderboltOutlined style={{ marginRight: 6, fontSize: 12 }} />
-                  {testingMail ? '测试中...' : '测试连接'}
+                  {testingMail ? t('setup.testing') : t('setup.testConnection')}
                 </button>
               </div>
             </Form>
@@ -593,60 +601,60 @@ export default function SetupWizard() {
         {/* 步骤6：管理员账户 */}
         {step === 6 && (
           <>
-            <h1 style={styles.title}>创建超级管理员账户</h1>
+            <h1 style={styles.title}>{t('setup.adminTitle')}</h1>
             <Form form={form} layout="vertical" style={{ width: '100%' }}>
               <Form.Item
-                label="用户名"
+                label={t('setup.username')}
                 name="username"
                 rules={[
-                  { required: true, message: '请输入用户名' },
-                  { min: 3, message: '至少 3 个字符' },
-                  { pattern: /^[a-zA-Z0-9_]+$/, message: '仅限字母、数字和下划线' },
+                  { required: true, message: t('setup.validation.usernameRequired') },
+                  { min: 3, message: t('setup.validation.usernameMin') },
+                  { pattern: /^[a-zA-Z0-9_]+$/, message: t('setup.validation.usernamePattern') },
                 ]}
                 style={{ marginBottom: 20 }}
               >
-                <Input placeholder="admin" size="large" style={styles.input} />
+                <Input placeholder={t('setup.usernamePlaceholder')} size="large" style={styles.input} />
               </Form.Item>
 
               <Form.Item
-                label="电子邮箱"
+                label={t('setup.email')}
                 name="email"
                 rules={[
-                  { required: true, message: '请输入邮箱' },
-                  { type: 'email', message: '邮箱格式不正确' },
+                  { required: true, message: t('setup.validation.emailRequired') },
+                  { type: 'email', message: t('setup.validation.emailInvalid') },
                 ]}
                 style={{ marginBottom: 20 }}
               >
-                <Input placeholder="admin@example.com" size="large" style={styles.input} />
+                <Input placeholder={t('setup.emailPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
 
               <Form.Item
-                label="密码"
+                label={t('setup.password')}
                 name="password"
                 rules={[
-                  { required: true, message: '请输入密码' },
-                  { min: 6, message: '至少 6 位' },
+                  { required: true, message: t('setup.validation.passwordRequired') },
+                  { min: 6, message: t('setup.validation.passwordMin') },
                 ]}
                 style={{ marginBottom: 20 }}
               >
-                <Input.Password placeholder="******" size="large" style={styles.input} />
+                <Input.Password placeholder={t('setup.passwordPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
 
               <Form.Item
-                label="确认密码"
+                label={t('setup.confirmPassword')}
                 name="confirmPassword"
                 rules={[
-                  { required: true, message: '请再次输入密码' },
+                  { required: true, message: t('setup.validation.confirmPasswordRequired') },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       if (!value || getFieldValue('password') === value) return Promise.resolve();
-                      return Promise.reject(new Error('两次密码输入不一致'));
+                      return Promise.reject(new Error(t('setup.validation.passwordMismatch')));
                     },
                   }),
                 ]}
                 style={{ marginBottom: 20 }}
               >
-                <Input.Password placeholder="******" size="large" style={styles.input} />
+                <Input.Password placeholder={t('setup.confirmPasswordPlaceholder')} size="large" style={styles.input} />
               </Form.Item>
             </Form>
           </>
@@ -655,25 +663,25 @@ export default function SetupWizard() {
         {/* 步骤7：确认 */}
         {step === 7 && (
           <>
-            <h1 style={styles.title}>确认配置信息</h1>
-            <p style={styles.subtitle}>请确认以下信息是否正确，点击"开始安装"完成配置。</p>
+            <h1 style={styles.title}>{t('setup.confirmTitle')}</h1>
+            <p style={styles.subtitle}>{t('setup.confirmDesc')}</p>
             <div style={styles.confirmBox}>
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>站点名称</span><span style={styles.confirmValue}>{data.siteName}</span></div>
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>数据库类型</span><span style={styles.confirmValue}>{data.dbType === 'sqlite' ? 'SQLite' : 'PostgreSQL'}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.siteNameLabel')}</span><span style={styles.confirmValue}>{data.siteName}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.dbTypeLabel')}</span><span style={styles.confirmValue}>{data.dbType === 'sqlite' ? t('setup.sqlite') : t('setup.postgresql')}</span></div>
               {data.dbType === 'postgresql' && (
                 <>
-                  <div style={styles.confirmRow}><span style={styles.confirmLabel}>数据库主机</span><span style={styles.confirmValue}>{data.dbHost}</span></div>
-                  <div style={styles.confirmRow}><span style={styles.confirmLabel}>数据库名称</span><span style={styles.confirmValue}>{data.dbName}</span></div>
+                  <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.dbHostLabel')}</span><span style={styles.confirmValue}>{data.dbHost}</span></div>
+                  <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.dbNameLabel')}</span><span style={styles.confirmValue}>{data.dbName}</span></div>
                 </>
               )}
               <div style={{ height: 12 }} />
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>Redis 缓存</span><span style={styles.confirmValue}>{data.redisEnabled ? `启用 (${data.redisHost}:${data.redisPort})` : '不启用'}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.redisLabel')}</span><span style={styles.confirmValue}>{data.redisEnabled ? `${t('setup.redisEnableYes')} (${data.redisHost}:${data.redisPort})` : t('setup.redisEnableNo')}</span></div>
               <div style={{ height: 12 }} />
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>SMTP 服务器</span><span style={styles.confirmValue}>{data.mailHost}:{data.mailPort}</span></div>
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>发件人邮箱</span><span style={styles.confirmValue}>{data.mailFrom}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.smtpServerLabel')}</span><span style={styles.confirmValue}>{data.mailHost}:{data.mailPort}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.senderEmailLabel')}</span><span style={styles.confirmValue}>{data.mailFrom}</span></div>
               <div style={{ height: 12 }} />
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>管理员用户名</span><span style={styles.confirmValue}>{data.username}</span></div>
-              <div style={styles.confirmRow}><span style={styles.confirmLabel}>管理员邮箱</span><span style={styles.confirmValue}>{data.email}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.adminUserLabel')}</span><span style={styles.confirmValue}>{data.username}</span></div>
+              <div style={styles.confirmRow}><span style={styles.confirmLabel}>{t('setup.adminEmailLabel')}</span><span style={styles.confirmValue}>{data.email}</span></div>
             </div>
           </>
         )}
@@ -685,23 +693,55 @@ export default function SetupWizard() {
         <div style={styles.actionArea}>
           {step > 1 && (
             <button style={styles.secondaryButton} onClick={goBack}>
-              返回
+              {t('setup.prevStep')}
             </button>
           )}
           <div style={{ flex: 1 }} />
           {step < 7 ? (
             <button style={styles.primaryButton} onClick={goNext} disabled={loading}>
-              下一步 <RightOutlined style={{ marginLeft: 6, fontSize: 12 }} />
+              {t('setup.nextStep')} <RightOutlined style={{ marginLeft: 6, fontSize: 12 }} />
             </button>
           ) : (
             <button style={styles.primaryButton} onClick={handleFinish} disabled={loading}>
-              {loading ? '安装中...' : '开始安装'}
+              {loading ? t('setup.installing') : t('setup.startInstall')}
             </button>
           )}
         </div>
       </div>
 
-      <div style={styles.bottomBar} />
+      {/* 底部黑边 + 语言切换 */}
+      <div style={styles.bottomBar}>
+        <Dropdown
+          placement="topRight"
+          overlayStyle={{ minWidth: 140 }}
+          menu={{
+            style: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 0 },
+            items: [
+              { key: 'SCH', label: <span style={{ color: '#fff' }}>{t('setup.lang.SCH', '简体中文')}</span> },
+              { key: 'TCH', label: <span style={{ color: '#fff' }}>{t('setup.lang.TCH', '繁體中文')}</span> },
+              { key: 'EN', label: <span style={{ color: '#fff' }}>{t('setup.lang.EN', 'English')}</span> },
+              { key: 'JP', label: <span style={{ color: '#fff' }}>{t('setup.lang.JP', '日本語')}</span> },
+            ],
+            onClick: ({ key }) => {
+              i18n.changeLanguage(key);
+            },
+          }}
+        >
+          <button
+            type="button"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <GlobalOutlined style={{ color: '#888', fontSize: 16 }} />
+          </button>
+        </Dropdown>
+      </div>
     </div>
   );
 }
@@ -834,6 +874,10 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#1a1a1a',
     height: 48,
     flexShrink: 0,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    padding: '0 20px',
   },
 
   primaryButton: {

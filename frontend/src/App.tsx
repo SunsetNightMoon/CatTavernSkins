@@ -18,6 +18,7 @@ import { Wardrobe } from './pages/Wardrobe/Wardrobe'
 import { UserProfile } from './pages/Profile/UserProfile'
 import { AdminDashboard } from './pages/Admin/AdminDashboard'
 import MySkins from './pages/MySkins/MySkins'
+import MyCapes from './pages/MySkins/MyCapes'
 
 function App() {
   const { isAuthenticated, user, updateUser, setSkinUrl, clearAuth } = useAuthStore()
@@ -123,6 +124,10 @@ function App() {
         <Route
           path="/my-skins"
           element={isAuthenticated ? <MySkins /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/my-capes"
+          element={isAuthenticated ? <MyCapes /> : <Navigate to="/login" />}
         />
         {/* 管理员路由 */}
         {isAuthenticated && user && user.level >= 1 && (

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message, AutoComplete, Divider } from 'antd'
+import { Form, Input, Button, message, AutoComplete, Divider, Dropdown } from 'antd'
+import { GlobalOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import type { SelectProps } from 'antd'
 import { authService } from '../../services/authService'
 import { useAuthStore } from '../../store/authStore'
@@ -30,7 +32,8 @@ function getEmailOptions(input: string): SelectProps<string>['options'] {
 }
 
 export function Login() {
-  usePageTitle('登录')
+  const { t } = useTranslation()
+  usePageTitle(t('auth.login'))
   const [form] = Form.useForm()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
@@ -43,6 +46,8 @@ export function Login() {
   const isEmbedVideo = hasEmbedImage && isVideoFile(loginEmbedImage)
 
   const [emailOptions, setEmailOptions] = useState<SelectProps<string>['options']>([])
+  const [captchaSessionId, setCaptchaSessionId] = useState<string>('')
+  const [captchaQuestion, setCaptchaQuestion] = useState<string>('')
   const [captchaType, setCaptchaType] = useState<'turnstile' | 'math'>('math')
   const [turnstileToken, setTurnstileToken] = useState<string>('')
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('')
@@ -61,6 +66,18 @@ export function Login() {
     setEmailOptions([])
   }
 
+  const loadCaptcha = async () => {
+    try {
+      const sessionId = Math.random().toString(36).substring(2, 15)
+      const response = await fetch(`/api/captcha/generate?sessionId=${sessionId}`)
+      const data = await response.json()
+      setCaptchaSessionId(sessionId)
+      setCaptchaQuestion(data.question)
+    } catch (error) {
+      console.error('加载验证码失败:', error)
+    }
+  }
+
   useEffect(() => {
     const fetchCaptchaType = async () => {
       try {
@@ -70,8 +87,11 @@ export function Login() {
         if (data.type === 'turnstile' && data.siteKey) {
           setTurnstileSiteKey(data.siteKey)
         }
+        if (data.type === 'math') {
+          loadCaptcha()
+        }
       } catch {
-        // keep default 'math'
+        loadCaptcha()
       }
     }
     fetchCaptchaType()
@@ -107,6 +127,9 @@ export function Login() {
 
       if (captchaType === 'turnstile' && turnstileToken) {
         loginData.turnstile_token = turnstileToken
+      } else {
+        loginData.captcha_session_id = captchaSessionId
+        loginData.captcha_answer = values.captcha_answer
       }
 
       const data = await authService.login(loginData)
@@ -115,11 +138,13 @@ export function Login() {
       const profileId = data.profiles?.[0]?.id || null
       setAuth(data.accessToken, data.user, data.skinUrl, profileName, profileId)
 
-      message.success('登录成功！')
+      message.success(t('auth.loginSuccess'))
       navigate('/')
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || '登录失败')
-      if (captchaType === 'turnstile') {
+      message.error(error.response?.data?.errorMessage || t('auth.loginFailed'))
+      if (captchaType === 'math') {
+        loadCaptcha()
+      } else {
         setTurnstileToken('')
       }
     } finally {
@@ -127,8 +152,37 @@ export function Login() {
     }
   }
 
+  const langItems = [
+    { key: 'SCH', label: '简体中文' },
+    { key: 'TCH', label: '繁體中文' },
+    { key: 'EN', label: 'English' },
+    { key: 'JP', label: '日本語' },
+  ]
+
   return (
     <div className="auth-page" data-theme={theme}>
+      {/* 语言切换 */}
+      <div className="auth-lang-switcher">
+        <Dropdown
+          placement="bottomRight"
+          overlayClassName="auth-lang-dropdown"
+          menu={{
+            items: langItems.map((item) => ({
+              key: item.key,
+              label: <span>{item.label}</span>,
+            })),
+            onClick: ({ key }) => {
+              window.localStorage.setItem('cattavern-language', key)
+              window.location.reload()
+            },
+          }}
+        >
+          <button type="button" className="auth-lang-switcher__btn">
+            <GlobalOutlined />
+          </button>
+        </Dropdown>
+      </div>
+
       {hasCustomBg ? (
         isBgVideo ? (
           <video
@@ -182,34 +236,34 @@ export function Login() {
           </div>
 
           <div className="auth-card">
-          <h2 className="auth-card__title">登录</h2>
+          <h2 className="auth-card__title">{t('auth.login')}</h2>
 
           <Form form={form} layout="vertical" onFinish={onFinish}>
             <Form.Item
-              label="邮箱"
+              label={t('auth.emailLabel')}
               name="email"
-              rules={[{ required: true, type: 'email', message: '请输入有效的邮箱' }]}
+              rules={[{ required: true, type: 'email', message: t('auth.emailInvalid') }]}
             >
               <AutoComplete
                 options={emailOptions}
                 onSearch={handleEmailSearch}
                 onSelect={handleEmailSelect}
                 onBlur={() => setTimeout(() => setEmailOptions([]), 200)}
-                placeholder="请输入邮箱"
+                placeholder={t('auth.emailPlaceholder')}
                 size="large"
               />
             </Form.Item>
 
             <Form.Item
-              label="密码"
+              label={t('auth.passwordLabel')}
               name="password"
-              rules={[{ required: true, message: '请输入密码' }]}
+              rules={[{ required: true, message: t('auth.passwordPlaceholder') }]}
             >
-              <Input.Password placeholder="请输入密码" size="large" />
+              <Input.Password placeholder={t('auth.passwordPlaceholder')} size="large" />
             </Form.Item>
 
-            {captchaType === 'turnstile' && (
-              <Form.Item label="人机验证">
+            {captchaType === 'turnstile' ? (
+              <Form.Item label={t('auth.captcha')}>
                 <TurnstileWidget
                   siteKey={turnstileSiteKey}
                   mode="managed"
@@ -217,23 +271,45 @@ export function Login() {
                   onError={handleTurnstileError}
                 />
               </Form.Item>
+            ) : (
+              <>
+                <Form.Item label={t('auth.captchaMath')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Input
+                      value={captchaQuestion}
+                      disabled
+                      style={{ width: '180px', fontWeight: 'bold' }}
+                      size="large"
+                    />
+                    <Button onClick={loadCaptcha} size="large">{t('auth.captchaRefresh')}</Button>
+                  </div>
+                </Form.Item>
+
+                <Form.Item
+                  name="captcha_answer"
+                  label={t('auth.captchaAnswerLabel')}
+                  rules={[{ required: true, message: t('auth.captchaAnswerPlaceholder') }]}
+                >
+                  <Input placeholder={t('auth.captchaAnswerPlaceholder')} style={{ width: '180px' }} size="large" />
+                </Form.Item>
+              </>
             )}
 
             <Form.Item style={{ marginBottom: 16 }}>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                登 录
+                {t('auth.loginButton')}
               </Button>
             </Form.Item>
 
             <div className="auth-card__footer">
-              <span>还没有账户？ </span>
-              <Link to="/register">立即注册</Link>
+              <span>{t('auth.noAccount')} </span>
+              <Link to="/register">{t('auth.registerNow')}</Link>
             </div>
           </Form>
 
           {(oauthProviders.github || oauthProviders.microsoft) && (
             <>
-              <Divider style={{ borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)', margin: '20px 0' }}>第三方登录</Divider>
+              <Divider style={{ borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)', margin: '20px 0' }}>{t('auth.thirdPartyLogin')}</Divider>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                 {oauthProviders.github && (
                   <Button
@@ -246,7 +322,7 @@ export function Login() {
                     href="/api/auth/oauth/github"
                     className="oauth-btn oauth-btn--github"
                   >
-                    GitHub 登录
+                    {t('auth.githubLogin')}
                   </Button>
                 )}
                 {oauthProviders.microsoft && (
@@ -263,7 +339,7 @@ export function Login() {
                     href="/api/auth/oauth/microsoft"
                     className="oauth-btn oauth-btn--microsoft"
                   >
-                    Microsoft 登录
+                    {t('auth.microsoftLogin')}
                   </Button>
                 )}
               </div>

@@ -4,6 +4,7 @@ import { Input, Row, Col, Pagination, Card, Tag, Spin, Tabs, Empty } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import type { Skin, Cape } from '../../types'
 import { SkinThumbnail3D } from '../../components/SkinThumbnail3D/SkinThumbnail3D'
+import { useTranslation } from 'react-i18next'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 const LICENSE_TAG_COLORS: Record<string, string> = {
@@ -21,6 +22,7 @@ const LICENSE_TAG_COLORS: Record<string, string> = {
 
 function SkinCard({ skin, onClick }: { skin: Skin; onClick: () => void }) {
   const previewModel = skin.model_type === 'slim' ? 'slim' : 'default'
+  const { t } = useTranslation()
 
   return (
     <Card
@@ -38,15 +40,15 @@ function SkinCard({ skin, onClick }: { skin: Skin; onClick: () => void }) {
       onClick={onClick}
     >
       <Card.Meta
-        title={skin.name ? skin.name : (skin.model_type === 'slim' ? '纤细' : '经典')}
+        title={skin.name ? skin.name : (skin.model_type === 'slim' ? t('library.slimModel') : t('library.classicModel'))}
         description={
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>上传者: {skin.uploader_name || `UID.${skin.user_uid}`}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('library.uploader')}: {skin.uploader_name || `UID.${skin.user_uid}`}</div>
             <div style={{ marginTop: 6 }}>
               <Tag color={LICENSE_TAG_COLORS[skin.license_type]}>{skin.license_type}</Tag>
             </div>
             <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 12 }}>
-              下载: {skin.download_count} | 浏览: {skin.view_count}
+              {t('library.downloads')}: {skin.download_count} | {t('library.views')}: {skin.view_count}
             </div>
           </div>
         }
@@ -58,6 +60,8 @@ function SkinCard({ skin, onClick }: { skin: Skin; onClick: () => void }) {
 function CapeCard({ cape, onClick }: { cape: Cape & { approval_status?: string }; onClick: () => void }) {
   const isPending = cape.approval_status === 'pending'
   const isRejected = cape.approval_status === 'rejected'
+  const { t } = useTranslation()
+
   return (
     <Card
       hoverable
@@ -76,7 +80,7 @@ function CapeCard({ cape, onClick }: { cape: Cape & { approval_status?: string }
               background: 'rgba(255,165,0,0.15)', borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <Tag color="orange" style={{ fontSize: 14, padding: '4px 12px' }}>待审核</Tag>
+              <Tag color="orange" style={{ fontSize: 14, padding: '4px 12px' }}>{t('library.pending')}</Tag>
             </div>
           )}
           {isRejected && (
@@ -85,7 +89,7 @@ function CapeCard({ cape, onClick }: { cape: Cape & { approval_status?: string }
               background: 'rgba(255,0,0,0.1)', borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <Tag color="red" style={{ fontSize: 14, padding: '4px 12px' }}>已拒绝</Tag>
+              <Tag color="red" style={{ fontSize: 14, padding: '4px 12px' }}>{t('library.rejected')}</Tag>
             </div>
           )}
         </div>
@@ -93,16 +97,16 @@ function CapeCard({ cape, onClick }: { cape: Cape & { approval_status?: string }
       onClick={onClick}
     >
       <Card.Meta
-        title={cape.name || '未命名披风'}
+        title={cape.name || t('library.unnamedCape')}
         description={
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>上传者: {cape.uploader_name || `UID.${cape.user_uid}`}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('library.uploader')}: {cape.uploader_name || `UID.${cape.user_uid}`}</div>
             <div style={{ marginTop: 6 }}>
               <Tag color={LICENSE_TAG_COLORS[cape.license_type]}>{cape.license_type}</Tag>
               <Tag>{cape.width}×{cape.height}</Tag>
             </div>
             <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 12 }}>
-              下载: {cape.download_count} | 浏览: {cape.view_count}
+              {t('library.downloads')}: {cape.download_count} | {t('library.views')}: {cape.view_count}
             </div>
           </div>
         }
@@ -119,6 +123,7 @@ function SkinGrid({ page, setPage, activeTab }: { page: number; setPage: (p: num
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
+  const { t } = useTranslation()
 
   const load = useCallback((p: number) => {
     setLoading(true)
@@ -142,7 +147,7 @@ function SkinGrid({ page, setPage, activeTab }: { page: number; setPage: (p: num
     <div>
       <div style={{ marginBottom: 16, display: 'flex', gap: 10 }}>
         <Input
-          placeholder="搜索皮肤..."
+          placeholder={t('library.searchPlaceholder')}
           prefix={<SearchOutlined />}
           style={{ width: 260 }}
           value={search}
@@ -154,7 +159,7 @@ function SkinGrid({ page, setPage, activeTab }: { page: number; setPage: (p: num
       {loading ? (
         <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>
       ) : filtered.length === 0 ? (
-        <Empty description="暂无皮肤" style={{ padding: 60 }} />
+        <Empty description={t('library.noSkins')} style={{ padding: 60 }} />
       ) : (
         <>
           <Row gutter={[16, 16]}>
@@ -177,6 +182,7 @@ function CapeGrid({ page, setPage, activeTab }: { page: number; setPage: (p: num
   const [capes, setCapes] = useState<Cape[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
+  const { t } = useTranslation()
 
   useEffect(() => {
     setLoading(true)
@@ -195,7 +201,7 @@ function CapeGrid({ page, setPage, activeTab }: { page: number; setPage: (p: num
       {loading ? (
         <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>
       ) : capes.length === 0 ? (
-        <Empty description="暂无披风" style={{ padding: 60 }} />
+        <Empty description={t('library.noCapes')} style={{ padding: 60 }} />
       ) : (
         <>
           <Row gutter={[16, 16]}>
@@ -214,7 +220,8 @@ function CapeGrid({ page, setPage, activeTab }: { page: number; setPage: (p: num
 }
 
 export function SkinLibrary() {
-  usePageTitle('材质库')
+  const { t } = useTranslation()
+  usePageTitle(t('nav.library'))
   const [searchParams, setSearchParams] = useSearchParams()
   const [skinPage, setSkinPage] = useState(() => Math.max(1, Number(searchParams.get('skinPage')) || 1))
   const [capePage, setCapePage] = useState(() => Math.max(1, Number(searchParams.get('capePage')) || 1))
@@ -233,13 +240,13 @@ export function SkinLibrary() {
 
   return (
     <div>
-      <h2>材质库</h2>
+      <h2>{t('nav.library')}</h2>
       <Tabs
         activeKey={activeTab}
         onChange={key => setActiveTab(key)}
         items={[
-          { key: 'skin', label: '皮肤', children: <SkinGrid page={skinPage} setPage={setSkinPage} activeTab={activeTab} /> },
-          { key: 'cape', label: '披风', children: <CapeGrid page={capePage} setPage={setCapePage} activeTab={activeTab} /> },
+          { key: 'skin', label: t('nav.skin'), children: <SkinGrid page={skinPage} setPage={setSkinPage} activeTab={activeTab} /> },
+          { key: 'cape', label: t('nav.cape'), children: <CapeGrid page={capePage} setPage={setCapePage} activeTab={activeTab} /> },
         ]}
       />
     </div>

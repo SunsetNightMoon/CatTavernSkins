@@ -8,6 +8,7 @@ import { SendOutlined, EditOutlined, CloseOutlined, UploadOutlined, PlusOutlined
 import Editor from '@monaco-editor/react'
 import './SystemSettings.css'
 import { isVideoFile } from '../../utils/media'
+import { useTranslation } from 'react-i18next'
 
 const { TextArea } = Input
 
@@ -20,12 +21,13 @@ interface HomepageButton {
    全局自动更新 Switch（复用组件）
    ============================================================ */
 function GlobalAutoApplySwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
   return (
     <Switch
       checked={checked}
       onChange={onChange}
-      checkedChildren="全局自动更新"
-      unCheckedChildren="全局自动更新"
+      checkedChildren={t('admin.globalAutoApply')}
+      unCheckedChildren={t('admin.globalAutoApply')}
       style={{ marginLeft: 12 }}
     />
   )
@@ -35,6 +37,7 @@ function GlobalAutoApplySwitch({ checked, onChange }: { checked: boolean; onChan
    注册设置卡片
    ============================================================ */
 function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -44,7 +47,7 @@ function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boo
     try {
       const res = await fetchWithAuth('/api/admin/settings', {
       })
-      if (!res.ok) throw new Error('读取失败')
+      if (!res.ok) throw new Error(t('admin.loadFailed'))
       const data = await res.json()
       form.setFieldsValue({
         allow_registration: data.ALLOW_REGISTRATION !== 'false',
@@ -52,7 +55,7 @@ function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boo
         enable_captcha: data.ENABLE_CAPTCHA !== 'false',
       })
     } catch (err: any) {
-      message.error(err.message || '读取设置失败')
+      message.error(err.message || t('admin.loadSettingsFailed'))
     } finally {
       setLoadingSettings(false)
     }
@@ -70,14 +73,14 @@ function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boo
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.errorMessage || '保存失败')
+        throw new Error(data.errorMessage || t('common.operationFailed'))
       }
-      message.success('注册设置已保存')
+      message.success(t('admin.registrationSettingsSaved'))
       if (autoApply) {
         useSiteStore.getState().loadSettings()
       }
     } catch (err: any) {
-      message.error(err.message || '保存失败')
+      message.error(err.message || t('common.operationFailed'))
     } finally {
       setLoading(false)
     }
@@ -88,38 +91,38 @@ function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boo
   }
 
   return (
-    <Card title="注册设置" style={{ marginBottom: 16 }}>
+    <Card title={t('admin.registrationSettings')} style={{ marginBottom: 16 }}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label="允许注册"
+          label={t('admin.allowRegistration')}
           name="allow_registration"
           valuePropName="checked"
-          tooltip="关闭后，新用户无法注册"
+          tooltip={t('admin.allowRegistrationTooltip')}
         >
-          <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+          <Switch checkedChildren={t('common.on')} unCheckedChildren={t('common.off')} />
         </Form.Item>
 
         <Form.Item
-          label="需要邮箱验证"
+          label={t('admin.requireEmailVerification')}
           name="require_email_verification"
           valuePropName="checked"
-          tooltip="开启后，注册时需要验证邮箱"
+          tooltip={t('admin.requireEmailVerificationTooltip')}
         >
-          <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+          <Switch checkedChildren={t('common.on')} unCheckedChildren={t('common.off')} />
         </Form.Item>
 
         <Form.Item
-          label="启用人机验证"
+          label={t('admin.enableCaptcha')}
           name="enable_captcha"
           valuePropName="checked"
-          tooltip="开启后，注册需要完成人机验证"
+          tooltip={t('admin.enableCaptchaTooltip')}
         >
-          <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+          <Switch checkedChildren={t('common.on')} unCheckedChildren={t('common.off')} />
         </Form.Item>
 
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading}>
-            保存注册设置
+            {t('admin.saveRegistrationSettings')}
           </Button>
           <GlobalAutoApplySwitch checked={autoApply} onChange={onAutoApplyChange} />
         </Form.Item>
@@ -132,6 +135,7 @@ function RegistrationSettings({ autoApply, onAutoApplyChange }: { autoApply: boo
    站点设置卡片
    ============================================================ */
 function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -142,7 +146,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
     try {
       const res = await fetchWithAuth('/api/admin/settings', {
       })
-      if (!res.ok) throw new Error('读取失败')
+      if (!res.ok) throw new Error(t('admin.loadFailed'))
       const data = await res.json()
       const buttons: HomepageButton[] = (() => {
         try {
@@ -154,15 +158,15 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
       })()
       setExtraButtons(buttons)
       form.setFieldsValue({
-        site_title: String(data.SITE_TITLE || 'CatTavernSkins'),
-        site_description: String(data.SITE_DESCRIPTION || 'Minecraft Skin Server - 自定义你的游戏形象'),
+        site_title: String(data.SITE_TITLE || t('landing.welcomePrefix')),
+        site_description: String(data.SITE_DESCRIPTION || t('admin.defaultSiteDescription')),
         site_favicon: String(data.SITE_FAVICON || '/favicon.svg'),
-        homepage_title_text: String(data.HOMEPAGE_TITLE_TEXT || '欢迎来到'),
-        homepage_text: String(data.HOMEPAGE_TEXT || 'WELCOME TO SKIN2!'),
-        homepage_button_text: String(data.HOMEPAGE_BUTTON_TEXT || '进入个人中心'),
+        homepage_title_text: String(data.HOMEPAGE_TITLE_TEXT || t('landing.welcomePrefix')),
+        homepage_text: String(data.HOMEPAGE_TEXT || t('landing.welcomeText')),
+        homepage_button_text: String(data.HOMEPAGE_BUTTON_TEXT || t('landing.enterProfile')),
       })
     } catch (err: any) {
-      message.error(err.message || '读取设置失败')
+      message.error(err.message || t('admin.loadSettingsFailed'))
     } finally {
       setLoadingSettings(false)
     }
@@ -184,15 +188,15 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.errorMessage || '保存失败')
+        throw new Error(data.errorMessage || t('common.operationFailed'))
       }
       clearSiteTitleCache()
-      message.success('站点设置已保存')
+      message.success(t('admin.siteSettingsSaved'))
       if (autoApply) {
         useSiteStore.getState().loadSettings()
       }
     } catch (err: any) {
-      message.error(err.message || '保存失败')
+      message.error(err.message || t('common.operationFailed'))
     } finally {
       setLoading(false)
     }
@@ -200,7 +204,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
 
   const addButton = () => {
     if (extraButtons.length >= 4) {
-      message.warning('最多只能添加4个自定义按钮')
+      message.warning(t('admin.maxButtonsWarning'))
       return
     }
     setExtraButtons([...extraButtons, { text: '', link: '' }])
@@ -221,62 +225,62 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
   }
 
   return (
-    <Card title="站点设置" style={{ marginBottom: 16 }}>
+    <Card title={t('admin.siteSettings')} style={{ marginBottom: 16 }}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label="站点标题"
+          label={t('admin.siteTitle')}
           name="site_title"
-          rules={[{ required: true, message: '请输入站点标题' }]}
+          rules={[{ required: true, message: t('admin.pleaseEnterSiteTitle') }]}
         >
           <Input placeholder="CatTavernSkins" />
         </Form.Item>
 
         <Form.Item
-          label="站点描述"
+          label={t('admin.siteDescription')}
           name="site_description"
-          rules={[{ required: true, message: '请输入站点描述' }]}
+          rules={[{ required: true, message: t('admin.pleaseEnterSiteDescription') }]}
         >
-          <TextArea rows={3} placeholder="Minecraft Skin Server - 自定义你的游戏形象" />
+          <TextArea rows={3} placeholder={t('admin.defaultSiteDescription')} />
         </Form.Item>
 
         <Form.Item
-          label="网站图标（favicon）"
+          label={t('admin.siteFavicon')}
           name="site_favicon"
         >
           <Input placeholder="/favicon.svg" />
         </Form.Item>
 
         <Form.Item
-          label="首页主标题前缀"
+          label={t('admin.homepageTitlePrefix')}
           name="homepage_title_text"
-          rules={[{ required: true, message: '请输入首页主标题前缀' }]}
-          tooltip="首页大标题的前缀文字，例如：欢迎来到、欢迎光临"
+          rules={[{ required: true, message: t('admin.pleaseEnterHomepageTitlePrefix') }]}
+          tooltip={t('admin.homepageTitlePrefixTooltip')}
         >
-          <Input placeholder="欢迎来到" />
+          <Input placeholder={t('admin.welcomeTo')} />
         </Form.Item>
 
         <Form.Item
-          label="首页副标题文字"
+          label={t('admin.homepageSubtitle')}
           name="homepage_text"
-          rules={[{ required: true, message: '请输入首页副标题文字' }]}
-          tooltip="首页主标题下方显示的文字"
+          rules={[{ required: true, message: t('admin.pleaseEnterHomepageSubtitle') }]}
+          tooltip={t('admin.homepageSubtitleTooltip')}
         >
           <Input placeholder="WELCOME TO SKIN2!" />
         </Form.Item>
 
         <Form.Item
-          label="首页主按钮文字"
+          label={t('admin.homepageMainButton')}
           name="homepage_button_text"
-          rules={[{ required: true, message: '请输入主按钮文字' }]}
-          tooltip="第一个按钮的文字，固定跳转到个人中心"
+          rules={[{ required: true, message: t('admin.pleaseEnterMainButtonText') }]}
+          tooltip={t('admin.homepageMainButtonTooltip')}
         >
-          <Input placeholder="进入个人中心" />
+          <Input placeholder={t('admin.enterPersonalCenter')} />
         </Form.Item>
 
-        <Form.Item label="首页额外按钮">
+        <Form.Item label={t('admin.homepageExtraButtons')}>
           <div className="homepage-extra-buttons">
             <div style={{ marginBottom: 8, fontSize: 12, color: 'var(--text-subtle)' }}>
-              最多可添加 4 个自定义按钮（当前 {extraButtons.length}/4）
+              {t('admin.maxButtonsHint', { current: extraButtons.length })}
             </div>
             <Space direction="vertical" style={{ width: '100%' }}>
             {extraButtons.map((btn, idx) => (
@@ -288,7 +292,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
               >
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>按钮 #{idx + 1}</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('admin.buttonNumber', { number: idx + 1 })}</span>
                     <Button
                       type="text"
                       danger
@@ -296,16 +300,16 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
                       icon={<MinusCircleOutlined />}
                       onClick={() => removeButton(idx)}
                     >
-                      删除
+                      {t('common.delete')}
                     </Button>
                   </Space>
                   <Input
-                    placeholder="按钮文字"
+                    placeholder={t('admin.buttonText')}
                     value={btn.text}
                     onChange={(e) => updateButton(idx, 'text', e.target.value)}
                   />
                   <Input
-                    placeholder="跳转链接（支持外部URL或内部路由，如 /library）"
+                    placeholder={t('admin.buttonLink')}
                     value={btn.link}
                     onChange={(e) => updateButton(idx, 'link', e.target.value)}
                   />
@@ -316,7 +320,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
               <div
                 className="admin-add-btn-square"
                 onClick={addButton}
-                title="添加按钮"
+                title={t('admin.addButton')}
               >
                 <PlusOutlined />
               </div>
@@ -327,7 +331,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
 
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading}>
-            保存站点设置
+            {t('admin.saveSiteSettings')}
           </Button>
           <GlobalAutoApplySwitch checked={autoApply} onChange={onAutoApplyChange} />
         </Form.Item>
@@ -340,6 +344,7 @@ function SiteSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; on
    主题设置卡片（背景图 + 透明度）
    ============================================================ */
 function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -360,7 +365,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
     try {
       const res = await fetchWithAuth('/api/admin/settings', {
       })
-      if (!res.ok) throw new Error('读取失败')
+      if (!res.ok) throw new Error(t('admin.loadFailed'))
       const data = await res.json()
       form.setFieldsValue({
         light_bg_image: String(data.LIGHT_BG_IMAGE || ''),
@@ -384,7 +389,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         setLoginEmbedPreview(data.LOGIN_EMBED_IMAGE);
       }
     } catch (err: any) {
-      message.error(err.message || '读取设置失败')
+      message.error(err.message || t('admin.loadSettingsFailed'))
     } finally {
       setLoadingSettings(false)
     }
@@ -411,14 +416,14 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.errorMessage || '保存失败')
+        throw new Error(data.errorMessage || t('common.saveFailed'))
       }
-      message.success('主题设置已保存')
+      message.success(t('admin.themeSettingsSaved'))
       if (autoApply) {
         useSiteStore.getState().loadSettings()
       }
     } catch (err: any) {
-      message.error(err.message || '保存失败')
+      message.error(err.message || t('common.operationFailed'))
     } finally {
       setLoading(false)
     }
@@ -433,12 +438,12 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.errorMessage || '上传失败');
+      if (!res.ok) throw new Error(data.errorMessage || t('admin.uploadFailed'));
       setLightBgPreview(data.url);
       form.setFieldsValue({ light_bg_image: data.url });
-      message.success('亮色背景图片已上传');
+      message.success(t('admin.lightBgUploaded'));
     } catch (err: any) {
-      message.error(err.message || '上传失败');
+      message.error(err.message || t('admin.uploadFailed'));
     }
     return false;
   };
@@ -448,13 +453,13 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       const res = await fetchWithAuth('/api/admin/theme-image/light-bg', { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.errorMessage || '删除失败');
+        throw new Error(data.errorMessage || t('admin.deleteFailed'));
       }
       setLightBgPreview('');
       form.setFieldsValue({ light_bg_image: '' });
-      message.success('亮色背景图片已删除');
+      message.success(t('admin.lightBgRemoved'));
     } catch (err: any) {
-      message.error(err.message || '删除失败');
+      message.error(err.message || t('admin.deleteFailed'));
     }
   };
 
@@ -467,12 +472,12 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.errorMessage || '上传失败');
+      if (!res.ok) throw new Error(data.errorMessage || t('admin.uploadFailed'));
       setDarkBgPreview(data.url);
       form.setFieldsValue({ dark_bg_image: data.url });
-      message.success('暗色背景图片已上传');
+      message.success(t('admin.darkBgUploaded'));
     } catch (err: any) {
-      message.error(err.message || '上传失败');
+      message.error(err.message || t('admin.uploadFailed'));
     }
     return false;
   };
@@ -482,13 +487,13 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       const res = await fetchWithAuth('/api/admin/theme-image/dark-bg', { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.errorMessage || '删除失败');
+        throw new Error(data.errorMessage || t('admin.deleteFailed'));
       }
       setDarkBgPreview('');
       form.setFieldsValue({ dark_bg_image: '' });
-      message.success('暗色背景图片已删除');
+      message.success(t('admin.darkBgRemoved'));
     } catch (err: any) {
-      message.error(err.message || '删除失败');
+      message.error(err.message || t('admin.deleteFailed'));
     }
   };
 
@@ -501,12 +506,12 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.errorMessage || '上传失败');
+      if (!res.ok) throw new Error(data.errorMessage || t('admin.uploadFailed'));
       setLoginBgPreview(data.url);
       form.setFieldsValue({ login_bg_image: data.url });
-      message.success('登录背景图片已上传');
+      message.success(t('admin.loginBgUploaded'));
     } catch (err: any) {
-      message.error(err.message || '上传失败');
+      message.error(err.message || t('admin.uploadFailed'));
     }
     return false;
   };
@@ -516,13 +521,13 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       const res = await fetchWithAuth('/api/admin/theme-image/login-bg', { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.errorMessage || '删除失败');
+        throw new Error(data.errorMessage || t('admin.deleteFailed'));
       }
       setLoginBgPreview('');
       form.setFieldsValue({ login_bg_image: '' });
-      message.success('登录背景图片已删除');
+      message.success(t('admin.loginBgRemoved'));
     } catch (err: any) {
-      message.error(err.message || '删除失败');
+      message.error(err.message || t('admin.deleteFailed'));
     }
   };
 
@@ -535,12 +540,12 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.errorMessage || '上传失败');
+      if (!res.ok) throw new Error(data.errorMessage || t('admin.uploadFailed'));
       setLoginEmbedPreview(data.url);
       form.setFieldsValue({ login_embed_image: data.url });
-      message.success('登录内嵌图片已上传');
+      message.success(t('admin.loginEmbedUploaded'));
     } catch (err: any) {
-      message.error(err.message || '上传失败');
+      message.error(err.message || t('admin.uploadFailed'));
     }
     return false;
   };
@@ -550,13 +555,13 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       const res = await fetchWithAuth('/api/admin/theme-image/login-embed', { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.errorMessage || '删除失败');
+        throw new Error(data.errorMessage || t('admin.deleteFailed'));
       }
       setLoginEmbedPreview('');
       form.setFieldsValue({ login_embed_image: '' });
-      message.success('登录内嵌图片已删除');
+      message.success(t('admin.loginEmbedRemoved'));
     } catch (err: any) {
-      message.error(err.message || '删除失败');
+      message.error(err.message || t('admin.deleteFailed'));
     }
   };
 
@@ -565,10 +570,10 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
   }
 
   return (
-    <Card title="主题设置" style={{ marginBottom: 16 }}>
+    <Card title={t('admin.themeSettings')} style={{ marginBottom: 16 }}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         {/* 亮色模式背景图 */}
-        <Form.Item label="亮色模式背景图片" name="light_bg_image" tooltip="亮色（Light）主题下显示的背景图片。支持输入图片 URL 或通过上传按钮上传。">
+        <Form.Item label={t('admin.lightModeBgImage')} name="light_bg_image" tooltip={t('admin.lightModeBgImageTooltip')}>
           <Input
             placeholder="https://example.com/light-bg.jpg"
             addonAfter={
@@ -580,7 +585,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         </Form.Item>
 
         {lightBgPreview && (
-          <Form.Item label="亮色背景预览">
+          <Form.Item label={t('admin.lightBgPreview')}>
             <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
               {isVideoFile(lightBgPreview) ? (
                 <video
@@ -601,7 +606,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
                 onClick={handleRemoveLightBg}
               >
-                移除
+                {t('common.remove')}
               </Button>
               {isVideoFile(lightBgPreview) && (
                 <Button
@@ -633,7 +638,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         )}
 
         {/* 暗色模式背景图 */}
-        <Form.Item label="暗色模式背景图片" name="dark_bg_image" tooltip="暗色（Dark）主题下显示的背景图片。支持输入图片 URL 或通过上传按钮上传。">
+        <Form.Item label={t('admin.darkModeBgImage')} name="dark_bg_image" tooltip={t('admin.darkModeBgImageTooltip')}>
           <Input
             placeholder="https://example.com/dark-bg.jpg"
             addonAfter={
@@ -645,7 +650,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         </Form.Item>
 
         {darkBgPreview && (
-          <Form.Item label="暗色背景预览">
+          <Form.Item label={t('admin.darkBgPreview')}>
             <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
               {isVideoFile(darkBgPreview) ? (
                 <video
@@ -666,7 +671,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
                 onClick={handleRemoveDarkBg}
               >
-                移除
+                {t('common.remove')}
               </Button>
               {isVideoFile(darkBgPreview) && (
                 <Button
@@ -698,7 +703,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         )}
 
         {/* 登录/注册页面背景图 */}
-        <Form.Item label="登录/注册背景图片" name="login_bg_image" tooltip="登录页和注册页的背景图片。支持输入图片 URL 或通过上传按钮上传。留空则使用默认星空背景。">
+        <Form.Item label={t('admin.loginBgImage')} name="login_bg_image" tooltip={t('admin.loginBgImageTooltip')}>
           <Input
             placeholder="https://example.com/login-bg.jpg"
             addonAfter={
@@ -710,7 +715,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         </Form.Item>
 
         {loginBgPreview && (
-          <Form.Item label="登录背景预览">
+          <Form.Item label={t('admin.loginBgPreview')}>
             <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
               {isVideoFile(loginBgPreview) ? (
                 <video
@@ -731,7 +736,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
                 onClick={handleRemoveLoginBg}
               >
-                移除
+                {t('common.remove')}
               </Button>
               {isVideoFile(loginBgPreview) && (
                 <Button
@@ -763,7 +768,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         )}
 
         {/* 登录/注册内嵌图片 */}
-        <Form.Item label="登录/注册内嵌图片" name="login_embed_image" tooltip="登录页和注册页左侧展示的图片，建议尺寸比例为 9:16（竖屏）。支持输入图片 URL 或通过上传按钮上传。留空则不显示。">
+        <Form.Item label={t('admin.loginEmbedImage')} name="login_embed_image" tooltip={t('admin.loginEmbedImageTooltip')}>
           <Input
             placeholder="https://example.com/embed-image.png"
             addonAfter={
@@ -775,7 +780,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         </Form.Item>
 
         {loginEmbedPreview && (
-          <Form.Item label="内嵌图片预览">
+          <Form.Item label={t('admin.embedImagePreview')}>
             <div style={{ position: 'relative', width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
               {isVideoFile(loginEmbedPreview) ? (
                 <video
@@ -796,7 +801,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
                 style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
                 onClick={handleRemoveLoginEmbed}
               >
-                移除
+                {t('common.remove')}
               </Button>
               {isVideoFile(loginEmbedPreview) && (
                 <Button
@@ -828,23 +833,23 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         )}
 
         {/* WebM 视频静音 */}
-        <Form.Item label="视频静音" name="video_muted" valuePropName="checked" tooltip="开启后，登录/注册页面的背景视频和内嵌视频将静音播放。对 MP4 和 WebM 格式均生效。">
-          <Switch checkedChildren="已静音" unCheckedChildren="有声" />
+        <Form.Item label={t('admin.videoMuted')} name="video_muted" valuePropName="checked" tooltip={t('admin.videoMutedTooltip')}>
+          <Switch checkedChildren={t('admin.muted')} unCheckedChildren={t('admin.soundOn')} />
         </Form.Item>
 
         {/* 亮色蒙版透明度 */}
-        <Form.Item label="亮色蒙版透明度" name="light_bg_overlay_opacity" tooltip="亮色（Light）主题下，背景图片上方蒙版的透明度。0 为完全透明，100 为完全不透明。">
+        <Form.Item label={t('admin.lightOverlayOpacity')} name="light_bg_overlay_opacity" tooltip={t('admin.lightOverlayOpacityTooltip')}>
           <Slider min={0} max={100} marks={{ 0: '0%', 50: '50%', 100: '100%' }} />
         </Form.Item>
 
         {/* 暗色蒙版透明度 */}
-        <Form.Item label="暗色蒙版透明度" name="dark_bg_overlay_opacity" tooltip="暗色（Dark）主题下，背景图片上方蒙版的透明度。0 为完全透明，100 为完全不透明。">
+        <Form.Item label={t('admin.darkOverlayOpacity')} name="dark_bg_overlay_opacity" tooltip={t('admin.darkOverlayOpacityTooltip')}>
           <Slider min={0} max={100} marks={{ 0: '0%', 50: '50%', 100: '100%' }} />
         </Form.Item>
 
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading}>
-            保存主题设置
+            {t('admin.saveThemeSettings')}
           </Button>
           <GlobalAutoApplySwitch checked={autoApply} onChange={onAutoApplyChange} />
         </Form.Item>
@@ -857,6 +862,7 @@ function ThemeSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
    邮箱设置卡片
    ============================================================ */
 function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -875,7 +881,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
     try {
       const res = await fetchWithAuth('/api/admin/settings', {
       })
-      if (!res.ok) throw new Error('读取失败')
+      if (!res.ok) throw new Error(t('admin.loadFailed'))
       const data = await res.json()
       form.setFieldsValue({
         base_url: String(data.BASE_URL || 'http://localhost:3000'),
@@ -888,7 +894,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         smtp_from_name: String(data.SMTP_FROM_NAME || ''),
       })
     } catch (err: any) {
-      message.error(err.message || '读取设置失败')
+      message.error(err.message || t('admin.loadSettingsFailed'))
     } finally {
       setLoadingSettings(false)
     }
@@ -912,15 +918,15 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.errorMessage || '保存失败')
+        throw new Error(data.errorMessage || t('common.saveFailed'))
       }
-      message.success('邮箱设置已保存')
+      message.success(t('admin.emailSettingsSaved'))
       loadSettings()
       if (autoApply) {
         useSiteStore.getState().loadSettings()
       }
     } catch (err: any) {
-      message.error(err.message || '保存失败')
+      message.error(err.message || t('common.operationFailed'))
     } finally {
       setLoading(false)
     }
@@ -935,15 +941,15 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         method: 'POST',
       })
       const data = await res.json()
-      setTestResult({ success: data.success, message: data.message || data.error || '未知错误' })
+      setTestResult({ success: data.success, message: data.message || data.error || t('common.unknownError') })
       if (data.success) {
-        message.success(data.message || 'SMTP 连接成功！')
+        message.success(data.message || t('admin.smtpConnected'))
       } else {
-        message.error(data.error || 'SMTP 连接失败')
+        message.error(data.error || t('admin.smtpFailed'))
       }
     } catch (err: any) {
-      setTestResult({ success: false, message: err.message || '请求失败' })
-      message.error(err.message || '请求失败')
+        setTestResult({ success: false, message: err.message || t('common.requestFailed') })
+        message.error(err.message || t('common.requestFailed'))
     } finally {
       setTesting(false)
     }
@@ -959,7 +965,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       setTemplateSubject(data.subject || '')
       setTemplateHtml(data.html || '')
     } catch (err: any) {
-      message.error('加载邮件模板失败')
+      message.error(t('admin.loadEmailTemplateFailed'))
     } finally {
       setLoadingTemplate(false)
     }
@@ -974,11 +980,11 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
   // 保存邮件模板
   const handleSaveTemplate = async () => {
     if (!templateSubject.trim()) {
-      message.error('邮件主题不能为空')
+      message.error(t('admin.emailSubjectRequired'))
       return
     }
     if (!templateHtml.trim()) {
-      message.error('邮件内容不能为空')
+      message.error(t('admin.emailContentRequired'))
       return
     }
     setSavingTemplate(true)
@@ -990,12 +996,12 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.errorMessage || '保存失败')
+        throw new Error(data.errorMessage || t('common.saveFailed'))
       }
-      message.success('邮件模板已保存')
+      message.success(t('admin.emailTemplateSaved'))
       setTemplateModalVisible(false)
     } catch (err: any) {
-      message.error(err.message || '保存失败')
+      message.error(err.message || t('common.operationFailed'))
     } finally {
       setSavingTemplate(false)
     }
@@ -1003,11 +1009,14 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
   // 重置模板为默认
   const handleResetTemplate = () => {
+    const emailVar = '{{EMAIL}}';
+    const verifyUrlVar = '{{VERIFY_URL}}';
+    const yearVar = '{{YEAR}}';
     setTemplateHtml(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>邮箱验证 - Minecraft Skin Server</title>
+  <title>${t('admin.emailVerificationTitle')}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
     .container { max-width: 480px; margin: 40px auto; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px; }
@@ -1024,20 +1033,20 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
     <div class="header">
       <h1>🎮 Minecraft Skin Server</h1>
     </div>
-    <p>你好 {{EMAIL}}，</p>
-    <p>我们收到了你的邮箱验证请求。请点击下面的按钮完成验证：</p>
+    <p>${t('admin.emailTemplateHello')} ${emailVar}，</p>
+    <p>${t('admin.emailTemplateVerificationRequest')}</p>
     <p style="text-align:center; margin: 28px 0;">
-      <a href="{{VERIFY_URL}}" class="btn">立即验证邮箱</a>
+      <a href="${verifyUrlVar}" class="btn">${t('admin.emailTemplateVerifyButton')}</a>
     </p>
-    <p>或者，复制以下链接到浏览器地址栏：</p>
-    <div class="code">{{VERIFY_URL}}</div>
-    <p style="font-size:13px;color:#8b949e;margin-top:20px;">此链接 30 分钟内有效。如果你没有请求验证，请忽略此邮件。</p>
-    <div class="footer">Minecraft Skin Server &copy; {{YEAR}}</div>
+    <p>${t('admin.emailTemplateOrCopy')}</p>
+    <div class="code">${verifyUrlVar}</div>
+    <p style="font-size:13px;color:#8b949e;margin-top:20px;">${t('admin.emailTemplateLinkValid')}</p>
+    <div class="footer">Minecraft Skin Server &copy; ${yearVar}</div>
   </div>
 </body>
 </html>`)
-    setTemplateSubject('【Minecraft Skin Server】请验证你的邮箱')
-    message.info('已重置为默认模板，请点保存生效')
+    setTemplateSubject(t('admin.defaultEmailSubject'))
+    message.info(t('admin.templateResetToDefault'))
   }
 
   if (loadingSettings) {
@@ -1046,71 +1055,71 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
 
   return (
     <>
-      <Card title="邮箱设置（SMTP）" style={{ marginBottom: 16 }}>
+      <Card title={t('admin.emailSettings')} style={{ marginBottom: 16 }}>
         <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item
-            label="站点 URL"
+            label={t('admin.siteUrl')}
             name="base_url"
-            rules={[{ required: true, message: '请输入站点URL' }]}
-            tooltip="用于生成验证邮件链接"
+            rules={[{ required: true, message: t('admin.pleaseEnterSiteUrl') }]}
+            tooltip={t('admin.siteUrlTooltip')}
           >
             <Input placeholder="https://skin.example.com" />
           </Form.Item>
 
           <Form.Item
-            label="SMTP 服务器"
+            label={t('admin.smtpHost')}
             name="smtp_host"
-            rules={[{ required: true, message: '请输入SMTP服务器' }]}
+            rules={[{ required: true, message: t('admin.pleaseEnterSmtpHost') }]}
           >
             <Input placeholder="smtp.163.com" />
           </Form.Item>
 
           <Form.Item
-            label="SMTP 端口"
+            label={t('admin.smtpPort')}
             name="smtp_port"
-            rules={[{ required: true, message: '请输入SMTP端口' }]}
+            rules={[{ required: true, message: t('admin.pleaseEnterSmtpPort') }]}
           >
             <Input type="number" placeholder="465 或 587" />
           </Form.Item>
 
           <Form.Item
-            label="使用 SSL/TLS"
+            label={t('admin.smtpSecure')}
             name="smtp_secure"
             valuePropName="checked"
           >
-            <Switch checkedChildren="是" unCheckedChildren="否" />
+            <Switch checkedChildren={t('common.yes')} unCheckedChildren={t('common.no')} />
           </Form.Item>
 
           <Form.Item
-            label="SMTP 用户名"
+            label={t('admin.smtpUser')}
             name="smtp_user"
-            rules={[{ required: true, message: '请输入SMTP用户名' }]}
-            tooltip="通常是你的邮箱地址"
+            rules={[{ required: true, message: t('admin.pleaseEnterSmtpUser') }]}
+            tooltip={t('admin.smtpUserTooltip')}
           >
             <Input placeholder="your_email@163.com" />
           </Form.Item>
 
           <Form.Item
-            label="SMTP 密码"
+            label={t('admin.smtpPass')}
             name="smtp_pass"
-            tooltip="留空表示不修改；填入新密码将覆盖原密码"
+            tooltip={t('admin.smtpPassTooltip')}
           >
-            <Input.Password placeholder="新密码（留空则不修改）" />
+            <Input.Password placeholder={t('admin.smtpPassPlaceholder')} />
           </Form.Item>
 
           <Form.Item
-            label="发件人邮箱"
+            label={t('admin.smtpFrom')}
             name="smtp_from"
-            rules={[{ required: true, message: '请输入发件人邮箱' }]}
-            tooltip="邮件中显示的发件人地址"
+            rules={[{ required: true, message: t('admin.pleaseEnterSmtpFrom') }]}
+            tooltip={t('admin.smtpFromTooltip')}
           >
             <Input placeholder="noreply@example.com" />
           </Form.Item>
 
           <Form.Item
-            label="发件人名称"
+            label={t('admin.smtpFromName')}
             name="smtp_from_name"
-            tooltip="邮件中显示的名称，例如：Minecraft Skin Server"
+            tooltip={t('admin.smtpFromNameTooltip')}
           >
             <Input placeholder="Minecraft Skin Server" />
           </Form.Item>
@@ -1121,7 +1130,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
               onClick={handleTestSmtp}
               loading={testing}
             >
-              测试 SMTP 连接
+              {t('admin.testSmtpConnection')}
             </Button>
             {testResult && (
               <span style={{
@@ -1134,25 +1143,25 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
             )}
           </Form.Item>
 
-          <Form.Item label="验证邮件模板">
+          <Form.Item label={t('admin.verificationEmailTemplate')}>
             <Button
               icon={<EditOutlined />}
               onClick={openTemplateModal}
               loading={loadingTemplate}
             >
-              编辑邮件模板
+              {t('admin.editEmailTemplate')}
             </Button>
             <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-subtle)' }}>
-              支持占位符：<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{EMAIL}}'}</code>、<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{VERIFY_URL}}'}</code>、<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{YEAR}}'}</code>
+              {t('admin.templatePlaceholders')}<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{EMAIL}}'}</code>、<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{VERIFY_URL}}'}</code>、<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{YEAR}}'}</code>
             </div>
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading}>
-              保存邮箱设置
+              {t('admin.saveEmailSettings')}
             </Button>
             <Button style={{ marginLeft: 10 }} onClick={() => form.resetFields()}>
-              重置
+              {t('common.reset')}
             </Button>
             <GlobalAutoApplySwitch checked={autoApply} onChange={onAutoApplyChange} />
           </Form.Item>
@@ -1163,7 +1172,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
       <Modal
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingRight: 16 }}>
-            <span style={{ color: '#cccccc', fontWeight: 500 }}>编辑验证邮件模板</span>
+            <span style={{ color: '#cccccc', fontWeight: 500 }}>{t('admin.editEmailTemplate')}</span>
             <CloseOutlined
               onClick={() => setTemplateModalVisible(false)}
               style={{ color: '#cccccc', fontSize: 16, cursor: 'pointer', padding: 4, borderRadius: 4 }}
@@ -1184,33 +1193,33 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
         }}
         footer={[
           <Button key="reset" onClick={handleResetTemplate} style={{ borderColor: '#3c3c3c', color: '#cccccc' }}>
-            重置为默认
+            {t('admin.resetToDefault')}
           </Button>,
           <Button key="cancel" onClick={() => setTemplateModalVisible(false)} style={{ borderColor: '#3c3c3c', color: '#cccccc' }}>
-            取消
+            {t('common.cancel')}
           </Button>,
           <Button key="save" type="primary" loading={savingTemplate} onClick={handleSaveTemplate}>
-            保存模板
+            {t('admin.saveTemplate')}
           </Button>,
         ]}
       >
         <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 4, fontSize: 13, color: 'var(--text-secondary)' }}>邮件主题</div>
+          <div style={{ marginBottom: 4, fontSize: 13, color: 'var(--text-secondary)' }}>{t('admin.emailSubject')}</div>
           <Input
             value={templateSubject}
             onChange={(e) => setTemplateSubject(e.target.value)}
-            placeholder="邮件主题，支持 {{EMAIL}} 占位符"
+            placeholder={t('admin.emailSubjectPlaceholder')}
           />
         </div>
         <div style={{ marginBottom: 8, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <span>邮件内容（HTML）</span>
-          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>可用占位符：</span>
+          <span>{t('admin.emailContentHtml')}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>{t('admin.availablePlaceholders')}</span>
           <span style={{ fontSize: 12, fontFamily: 'monospace', background: '#1e3a5f', color: '#58a6ff', padding: '2px 8px', borderRadius: 4, border: '1px solid #1f6feb' }}>{'{{EMAIL}}'}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>= 收件人邮箱</span>
+          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>= {t('admin.placeholderEmail')}</span>
           <span style={{ fontSize: 12, fontFamily: 'monospace', background: '#1e3a5f', color: '#58a6ff', padding: '2px 8px', borderRadius: 4, border: '1px solid #1f6feb' }}>{'{{VERIFY_URL}}'}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>= 验证链接</span>
+          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>= {t('admin.placeholderVerifyUrl')}</span>
           <span style={{ fontSize: 12, fontFamily: 'monospace', background: '#1e3a5f', color: '#58a6ff', padding: '2px 8px', borderRadius: 4, border: '1px solid #1f6feb' }}>{'{{YEAR}}'}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>= 当前年份</span>
+          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>= {t('admin.placeholderYear')}</span>
         </div>
         <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #30363d' }}>
           <Editor
@@ -1221,7 +1230,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
             onChange={(value) => setTemplateHtml(value || '')}
             loading={
               <div style={{ color: '#ccc', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e1e1e' }}>
-                正在加载编辑器...
+                {t('admin.loadingEditor')}
               </div>
             }
             options={{
@@ -1247,6 +1256,7 @@ function EmailSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; o
    版权设置卡片
    ============================================================ */
 function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolean; onAutoApplyChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(true)
@@ -1256,14 +1266,14 @@ function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolea
     try {
       const res = await fetchWithAuth('/api/admin/settings', {
       })
-      if (!res.ok) throw new Error('读取失败')
+      if (!res.ok) throw new Error(t('admin.loadFailed'))
       const data = await res.json()
       form.setFieldsValue({
         copyright_text: data.COPYRIGHT_TEXT || '© 2024 Minecraft Skin Server',
         copyright_beian: data.COPYRIGHT_BEIAN || '',
       })
     } catch (err: any) {
-      message.error(err.message || '读取设置失败')
+      message.error(err.message || t('admin.loadSettingsFailed'))
     } finally {
       setLoadingSettings(false)
     }
@@ -1285,14 +1295,14 @@ function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolea
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.errorMessage || '保存失败')
+        throw new Error(data.errorMessage || t('common.saveFailed'))
       }
-      message.success('版权设置已保存')
+      message.success(t('admin.copyrightSettingsSaved'))
       if (autoApply) {
         useSiteStore.getState().loadSettings()
       }
     } catch (err: any) {
-      message.error(err.message || '保存失败')
+      message.error(err.message || t('common.operationFailed'))
     } finally {
       setLoading(false)
     }
@@ -1303,23 +1313,23 @@ function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolea
   }
 
   return (
-    <Card title="版权设置" style={{ marginBottom: 16 }}>
+    <Card title={t('admin.copyrightSettings')} style={{ marginBottom: 16 }}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label="自定义版权标识"
+          label={t('admin.customCopyright')}
           name="copyright_text"
-          rules={[{ required: true, message: '请输入版权标识' }]}
-          tooltip="显示在页脚的主版权信息，支持 HTML"
+          rules={[{ required: true, message: t('admin.pleaseEnterCopyright') }]}
+          tooltip={t('admin.customCopyrightTooltip')}
         >
-          <Input placeholder="© 2024 Minecraft Skin Server" />
+          <Input placeholder={t('admin.copyrightPlaceholder')} />
         </Form.Item>
 
         <Form.Item
-          label="备案信息（可选）"
+          label={t('admin.beianInfo')}
           name="copyright_beian"
-          tooltip="ICP 备案号等信息，留空则不显示"
+          tooltip={t('admin.beianInfoTooltip')}
         >
-          <Input placeholder="例：京ICP备xxxxxxxx号-x" />
+          <Input placeholder={t('admin.beianPlaceholder')} />
         </Form.Item>
 
         <Form.Item>
@@ -1332,19 +1342,19 @@ function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolea
             borderRadius: 8,
             padding: '12px 16px',
           }}>
-            ⚠️ <strong>项目版权标识（不可私自更改）</strong>
+            ⚠️ <strong>{t('admin.copyrightWarningTitle')}</strong>
             <br />
-            当前值：<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>Powered by CatTavernSkins</code>
+            {t('admin.copyrightWarning1')}<code style={{ background: '#1e3a5f', color: '#58a6ff', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>Powered by CatTavernSkins</code>
             <br />
-            此标识为项目硬编码版权声明，<strong>不可通过管理面板更改</strong>。
+            {t('admin.copyrightWarning2')}
             <br />
-            私自移除或修改此标识将违反项目开源协议。
+            {t('admin.copyrightWarning3')}
           </div>
         </Form.Item>
 
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading}>
-            保存版权设置
+            {t('admin.saveCopyrightSettings')}
           </Button>
           <GlobalAutoApplySwitch checked={autoApply} onChange={onAutoApplyChange} />
         </Form.Item>
@@ -1357,6 +1367,7 @@ function CopyrightSettings({ autoApply, onAutoApplyChange }: { autoApply: boolea
    主组件
    ============================================================ */
 export function SystemSettings() {
+  const { t } = useTranslation()
   const { token } = useAuthStore()
   const [autoApply, setAutoApply] = useState(() => {
     try {
@@ -1379,7 +1390,7 @@ export function SystemSettings() {
 
   return (
     <div>
-      <h2>系统设置</h2>
+      <h2>{t('admin.systemSettings')}</h2>
       <RegistrationSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
       <SiteSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />
       <ThemeSettings autoApply={autoApply} onAutoApplyChange={handleAutoApplyChange} />

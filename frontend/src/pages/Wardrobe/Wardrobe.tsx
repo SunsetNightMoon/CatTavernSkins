@@ -6,6 +6,7 @@ import { SkinThumbnail3D } from '../../components/SkinThumbnail3D/SkinThumbnail3
 import { profileService } from '../../services/profileService'
 import { useAuthStore } from '../../store/authStore'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { useTranslation } from 'react-i18next'
 import type { Skin, Cape } from '../../types'
 
 function useViewportSize() {
@@ -29,7 +30,8 @@ type SkinTab = 'mine' | 'favorites'
 type CapeTab = 'mine' | 'favorites'
 
 export function Wardrobe() {
-  usePageTitle('衣柜')
+  const { t } = useTranslation()
+  usePageTitle(t('nav.wardrobe'))
   const { token, setSkinUrl } = useAuthStore()
 
   // 数据列表
@@ -121,7 +123,7 @@ export function Wardrobe() {
       .then(async r => {
         if (!r.ok) {
           const err = await r.json().catch(() => ({}))
-          throw new Error(err.errorMessage || `请求失败: ${r.status}`)
+          throw new Error(err.errorMessage || t('common.requestFailed', { status: r.status }))
         }
         return r.json()
       })
@@ -129,12 +131,12 @@ export function Wardrobe() {
         if (Array.isArray(data)) {
           setSkins(data)
         } else if (data.error) {
-          throw new Error(data.errorMessage || '获取皮肤列表失败')
+          throw new Error(data.errorMessage || t('wardrobe.loadSkinsFailed'))
         }
       })
       .catch((err: any) => {
         console.error('加载皮肤失败:', err)
-        setSkinsError(err.message || '连接服务器失败，请刷新重试')
+        setSkinsError(err.message || t('common.serverError'))
       })
       .finally(() => setLoadingSkins(false))
 
@@ -147,7 +149,7 @@ export function Wardrobe() {
       .then(async r => {
         if (!r.ok) {
           const err = await r.json().catch(() => ({}))
-          throw new Error(err.errorMessage || `请求失败: ${r.status}`)
+          throw new Error(err.errorMessage || t('common.requestFailed', { status: r.status }))
         }
         return r.json()
       })
@@ -155,12 +157,12 @@ export function Wardrobe() {
         if (Array.isArray(data.capes)) {
           setCapes(data.capes)
         } else if (data.error) {
-          throw new Error(data.errorMessage || '获取披风列表失败')
+          throw new Error(data.errorMessage || t('wardrobe.loadCapesFailed'))
         }
       })
       .catch((err: any) => {
         console.error('加载披风失败:', err)
-        setCapesError(err.message || '连接服务器失败，请刷新重试')
+        setCapesError(err.message || t('common.serverError'))
       })
       .finally(() => setLoadingCapes(false))
   }, [token])
@@ -175,13 +177,13 @@ export function Wardrobe() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.errorMessage || `请求失败: ${res.status}`)
+        throw new Error(err.errorMessage || t('common.requestFailed', { status: res.status }))
       }
       const data = await res.json()
       setFavoritedSkins(Array.isArray(data.skins) ? data.skins : [])
     } catch (e: any) {
       console.error('加载收藏皮肤失败:', e)
-      message.error(e.message || '加载收藏皮肤失败')
+      message.error(e.message || t('wardrobe.loadFavoritedSkinsFailed'))
     } finally {
       setLoadingFavoritedSkins(false)
     }
@@ -197,13 +199,13 @@ export function Wardrobe() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.errorMessage || `请求失败: ${res.status}`)
+        throw new Error(err.errorMessage || t('common.requestFailed', { status: res.status }))
       }
       const data = await res.json()
       setFavoritedCapes(Array.isArray(data.capes) ? data.capes : [])
     } catch (e: any) {
       console.error('加载收藏披风失败:', e)
-      message.error(e.message || '加载收藏披风失败')
+      message.error(e.message || t('wardrobe.loadFavoritedCapesFailed'))
     } finally {
       setLoadingFavoritedCapes(false)
     }
@@ -281,7 +283,7 @@ export function Wardrobe() {
     setApplyingSkin(true)
     try {
       await profileService.applySkin(currentProfile.id, selectedSkinId)
-      message.success('皮肤应用成功！')
+      message.success(t('wardrobe.skinApplied'))
       setCurrentProfile({ ...currentProfile, skin_id: selectedSkinId })
       // 同步头像
       const appliedSkin = skins.find(s => s.id === selectedSkinId) ||
@@ -291,7 +293,7 @@ export function Wardrobe() {
         : '/steve.png'
       setSkinUrl(newUrl)
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || '应用皮肤失败')
+      message.error(error.response?.data?.errorMessage || t('wardrobe.applySkinFailed'))
     } finally {
       setApplyingSkin(false)
     }
@@ -302,10 +304,10 @@ export function Wardrobe() {
     setApplyingCape(true)
     try {
       await profileService.applyCape(currentProfile.id, selectedCapeId)
-      message.success('披风应用成功！')
+      message.success(t('wardrobe.capeApplied'))
       setCurrentProfile({ ...currentProfile, cape_id: selectedCapeId })
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || '应用披风失败')
+      message.error(error.response?.data?.errorMessage || t('wardrobe.applyCapeFailed'))
     } finally {
       setApplyingCape(false)
     }
@@ -316,12 +318,12 @@ export function Wardrobe() {
     setApplyingSkin(true)
     try {
       await profileService.removeSkin(currentProfile.id)
-      message.success('皮肤已移除')
+      message.success(t('wardrobe.skinRemoved'))
       setCurrentProfile({ ...currentProfile, skin_id: undefined })
       setSelectedSkinId(null)
       setSkinUrl(null)
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || '移除皮肤失败')
+      message.error(error.response?.data?.errorMessage || t('wardrobe.removeSkinFailed'))
     } finally {
       setApplyingSkin(false)
     }
@@ -332,11 +334,11 @@ export function Wardrobe() {
     setApplyingCape(true)
     try {
       await profileService.removeCape(currentProfile.id)
-      message.success('披风已移除')
+      message.success(t('wardrobe.capeRemoved'))
       setCurrentProfile({ ...currentProfile, cape_id: undefined })
       setSelectedCapeId(null)
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || '移除披风失败')
+      message.error(error.response?.data?.errorMessage || t('wardrobe.removeCapeFailed'))
     } finally {
       setApplyingCape(false)
     }
@@ -387,10 +389,10 @@ export function Wardrobe() {
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 0 20px 0' }}>
       {/* 标题和当前角色 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>我的衣柜</h2>
+        <h2 style={{ margin: 0 }}>{t('wardrobe.myWardrobe')}</h2>
         {currentProfile && (
           <Tag color="blue" icon={<CheckOutlined />}>
-            当前角色: {currentProfile.name}
+            {t('wardrobe.currentProfile')}: {currentProfile.name}
           </Tag>
         )}
       </div>
@@ -408,8 +410,8 @@ export function Wardrobe() {
           />
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
             {selectedSkin || selectedCape
-              ? '已在 3D 模型上预览组合效果'
-              : '从下方选择皮肤和披风进行搭配预览'}
+              ? t('wardrobe.previewCombined')
+              : t('wardrobe.selectToPreview')}
           </div>
         </div>
 
@@ -418,7 +420,7 @@ export function Wardrobe() {
           {/* ===== 皮肤选择 ===== */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>选择皮肤</h3>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{t('wardrobe.selectSkin')}</h3>
               <Space>
                 {selectedSkinId !== null && !isSkinApplied && (
                   <Button
@@ -428,11 +430,11 @@ export function Wardrobe() {
                     loading={applyingSkin}
                     onClick={handleApplySkin}
                   >
-                    应用
+                    {t('wardrobe.apply')}
                   </Button>
                 )}
                 {isSkinApplied && (
-                  <Tag color="success">已应用</Tag>
+                  <Tag color="success">{t('wardrobe.applied')}</Tag>
                 )}
                 {currentProfile?.skin_id && (
                   <Button
@@ -443,7 +445,7 @@ export function Wardrobe() {
                     loading={applyingSkin}
                     onClick={handleRemoveSkin}
                   >
-                    移除
+                    {t('wardrobe.remove')}
                   </Button>
                 )}
               </Space>
@@ -455,8 +457,8 @@ export function Wardrobe() {
               size="small"
               style={{ marginBottom: 12 }}
             >
-              <Radio.Button value="mine">我的皮肤</Radio.Button>
-              <Radio.Button value="favorites">收藏的皮肤</Radio.Button>
+              <Radio.Button value="mine">{t('wardrobe.mySkins')}</Radio.Button>
+              <Radio.Button value="favorites">{t('wardrobe.favoritedSkins')}</Radio.Button>
             </Radio.Group>
 
             {isLoadingSkins || loadingProfiles ? (
@@ -465,15 +467,15 @@ export function Wardrobe() {
               <Empty
                 description={
                   <div>
-                    <div style={{ color: '#ff4d4f', marginBottom: 8 }}>加载失败: {skinsError}</div>
-                    <Button size="small" onClick={() => window.location.reload()}>刷新重试</Button>
+                    <div style={{ color: '#ff4d4f', marginBottom: 8 }}>{t('common.loadFailed')}: {skinsError}</div>
+                    <Button size="small" onClick={() => window.location.reload()}>{t('common.retry')}</Button>
                   </div>
                 }
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : displayedSkins.length === 0 ? (
               <Empty
-                description={skinTab === 'mine' ? '暂无皮肤，请先上传' : '暂无收藏，去材质库收藏吧'}
+                description={skinTab === 'mine' ? t('wardrobe.noSkins') : t('wardrobe.noFavoritedSkins')}
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : (
@@ -513,7 +515,7 @@ export function Wardrobe() {
                               zIndex: 1,
                               lineHeight: '16px',
                             }}>
-                              使用中
+                              {t('wardrobe.inUse')}
                             </div>
                           )}
                           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
@@ -526,11 +528,11 @@ export function Wardrobe() {
                           </div>
                           <div>
                             <div style={{ fontSize: 11, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {skin.name || '未命名皮肤'}
+                              {skin.name || t('wardrobe.unnamedSkin')}
                             </div>
                             <div style={{ textAlign: 'center', marginTop: 4 }}>
                               <Tag color={skin.model_type === 'slim' ? 'blue' : 'default'} style={{ margin: 0 }}>
-                                {skin.model_type === 'slim' ? '纤细' : '经典'}
+                                {skin.model_type === 'slim' ? t('wardrobe.slim') : t('wardrobe.classic')}
                               </Tag>
                             </div>
                           </div>
@@ -558,7 +560,7 @@ export function Wardrobe() {
           {/* ===== 披风选择 ===== */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>选择披风</h3>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{t('wardrobe.selectCape')}</h3>
               <Space>
                 {selectedCapeId !== null && !isCapeApplied && (
                   <Button
@@ -568,11 +570,11 @@ export function Wardrobe() {
                     loading={applyingCape}
                     onClick={handleApplyCape}
                   >
-                    应用
+                    {t('wardrobe.apply')}
                   </Button>
                 )}
                 {isCapeApplied && (
-                  <Tag color="success">已应用</Tag>
+                  <Tag color="success">{t('wardrobe.applied')}</Tag>
                 )}
                 {currentProfile?.cape_id && (
                   <Button
@@ -583,7 +585,7 @@ export function Wardrobe() {
                     loading={applyingCape}
                     onClick={handleRemoveCape}
                   >
-                    移除
+                    {t('wardrobe.remove')}
                   </Button>
                 )}
               </Space>
@@ -595,8 +597,8 @@ export function Wardrobe() {
               size="small"
               style={{ marginBottom: 12 }}
             >
-              <Radio.Button value="mine">我的披风</Radio.Button>
-              <Radio.Button value="favorites">收藏的披风</Radio.Button>
+              <Radio.Button value="mine">{t('wardrobe.myCapes')}</Radio.Button>
+              <Radio.Button value="favorites">{t('wardrobe.favoritedCapes')}</Radio.Button>
             </Radio.Group>
 
             {isLoadingCapes || loadingProfiles ? (
@@ -605,15 +607,15 @@ export function Wardrobe() {
               <Empty
                 description={
                   <div>
-                    <div style={{ color: '#ff4d4f', marginBottom: 8 }}>加载失败: {capesError}</div>
-                    <Button size="small" onClick={() => window.location.reload()}>刷新重试</Button>
+                    <div style={{ color: '#ff4d4f', marginBottom: 8 }}>{t('common.loadFailed')}: {capesError}</div>
+                    <Button size="small" onClick={() => window.location.reload()}>{t('common.retry')}</Button>
                   </div>
                 }
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : displayedCapes.length === 0 ? (
               <Empty
-                description={capeTab === 'mine' ? '暂无披风，请先上传' : '暂无收藏，去披风库收藏吧'}
+                description={capeTab === 'mine' ? t('wardrobe.noCapes') : t('wardrobe.noFavoritedCapes')}
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : (
@@ -653,7 +655,7 @@ export function Wardrobe() {
                               zIndex: 1,
                               lineHeight: '16px',
                             }}>
-                              使用中
+                              {t('wardrobe.inUse')}
                             </div>
                           )}
                           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
@@ -667,15 +669,15 @@ export function Wardrobe() {
                           </div>
                           <div>
                             <div style={{ fontSize: 11, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {cape.name || '未命名披风'}
+                              {cape.name || t('wardrobe.unnamedCape')}
                             </div>
                             <div style={{ textAlign: 'center', marginTop: 4 }}>
                               <Tag style={{ margin: 0 }}>{cape.width}×{cape.height}</Tag>
                               {cape.approval_status === 'pending' && (
-                                <Tag color="orange" style={{ marginLeft: 4 }}>待审核</Tag>
+                                <Tag color="orange" style={{ marginLeft: 4 }}>{t('wardrobe.pending')}</Tag>
                               )}
                               {cape.approval_status === 'rejected' && (
-                                <Tag color="red" style={{ marginLeft: 4 }}>已拒绝</Tag>
+                                <Tag color="red" style={{ marginLeft: 4 }}>{t('wardrobe.rejected')}</Tag>
                               )}
                             </div>
                           </div>

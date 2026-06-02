@@ -53,12 +53,12 @@ export function Layout() {
       <AntLayout style={{ position: 'relative', zIndex: 10, background: 'transparent', minHeight: '100vh' }}>
         <TopNav
           links={[
-            { path: '/', label: '首页' },
-            { path: '/library', label: '材质库' },
-            { path: '/upload', label: '上传材质', auth: true },
-            { path: '/wardrobe', label: '衣柜', auth: true },
-            { path: '/profile', label: '个人中心', auth: true },
-            { path: '/admin', label: '管理面板', auth: true, admin: true },
+            { path: '/', label: 'nav.home' },
+            { path: '/library', label: 'nav.library' },
+            { path: '/upload', label: 'nav.upload', auth: true },
+            { path: '/wardrobe', label: 'nav.wardrobe', auth: true },
+            { path: '/profile', label: 'nav.profile', auth: true },
+            { path: '/admin', label: 'nav.admin', auth: true, admin: true },
           ]}
         />
 

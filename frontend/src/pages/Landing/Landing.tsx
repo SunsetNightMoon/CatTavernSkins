@@ -4,6 +4,7 @@ import {
   RightOutlined,
   LinkOutlined,
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useSiteStore } from '../../store/siteStore'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { TopNav } from '../../components/TopNav/TopNav'
@@ -16,6 +17,7 @@ interface HomepageButton {
 
 /* ---------- component ---------- */
 export function Landing() {
+  const { t } = useTranslation()
   usePageTitle(null)
   const navigate = useNavigate()
   const {
@@ -26,9 +28,9 @@ export function Landing() {
   } = useSiteStore()
   const currentBgImage = theme === 'dark' ? darkBgImage : lightBgImage
   const [siteSettings, setSiteSettings] = useState({
-    HOMEPAGE_TITLE_TEXT: '欢迎来到',
-    HOMEPAGE_TEXT: 'WELCOME TO SKIN2!',
-    HOMEPAGE_BUTTON_TEXT: '进入个人中心',
+    HOMEPAGE_TITLE_TEXT: t('landing.welcomePrefix'),
+    HOMEPAGE_TEXT: t('landing.welcomeText'),
+    HOMEPAGE_BUTTON_TEXT: t('landing.enterProfile'),
     HOMEPAGE_BUTTONS: '[]',
   })
 
@@ -46,9 +48,9 @@ export function Landing() {
         if (res.ok) {
           const data = await res.json()
           setSiteSettings({
-            HOMEPAGE_TITLE_TEXT: String(data.HOMEPAGE_TITLE_TEXT || '欢迎来到'),
-            HOMEPAGE_TEXT: String(data.HOMEPAGE_TEXT || 'WELCOME TO SKIN2!'),
-            HOMEPAGE_BUTTON_TEXT: String(data.HOMEPAGE_BUTTON_TEXT || '进入个人中心'),
+            HOMEPAGE_TITLE_TEXT: String(data.HOMEPAGE_TITLE_TEXT || t('landing.welcomePrefix')),
+            HOMEPAGE_TEXT: String(data.HOMEPAGE_TEXT || t('landing.welcomeText')),
+            HOMEPAGE_BUTTON_TEXT: String(data.HOMEPAGE_BUTTON_TEXT || t('landing.enterProfile')),
             HOMEPAGE_BUTTONS: String(data.HOMEPAGE_BUTTONS || '[]'),
           })
         }
@@ -57,7 +59,7 @@ export function Landing() {
       }
     }
     loadSettings()
-  }, [])
+  }, [t])
 
   // 判断是否有自定义背景（从全局 store 读取，根据主题选择）
   const hasCustomBg = currentBgImage && currentBgImage.trim() !== ''
@@ -104,12 +106,12 @@ export function Landing() {
         <TopNav
           brandOnClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           links={[
-            { path: '/', label: '首页' },
-            { path: '/library', label: '材质库' },
-            { path: '/upload', label: '上传材质', auth: true },
-            { path: '/wardrobe', label: '衣柜', auth: true },
-            { path: '/profile', label: '个人中心', auth: true },
-            { path: '/admin', label: '管理面板', auth: true, admin: true },
+            { path: '/', label: t('nav.home') },
+            { path: '/library', label: t('nav.library') },
+            { path: '/upload', label: t('nav.upload'), auth: true },
+            { path: '/wardrobe', label: t('nav.wardrobe'), auth: true },
+            { path: '/profile', label: t('nav.profile'), auth: true },
+            { path: '/admin', label: t('nav.admin'), auth: true, admin: true },
           ]}
         />
 

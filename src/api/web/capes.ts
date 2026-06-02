@@ -36,6 +36,37 @@ router.get('/mine', async (req: Request, res: Response) => {
 });
 
 /**
+ * PUT /api/capes/:capeId
+ * 更新披风信息
+ */
+router.put('/:capeId', async (req: Request, res: Response) => {
+  try {
+    const { capeId } = req.params;
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized', errorMessage: '请先登录' });
+    }
+
+    const token = await TokenModel.validate(authHeader.substring(7));
+    if (!token) {
+      return res.status(403).json({ error: 'Forbidden', errorMessage: 'Token 无效' });
+    }
+
+    const cape = await CapeModel.findById(capeId);
+    if (!cape || cape.user_id !== token.user_id) {
+      return res.status(403).json({ error: 'Forbidden', errorMessage: '披风不存在或无权修改' });
+    }
+
+    const { name, description, license_type, permission_level } = req.body;
+    await CapeModel.updateInfo(capeId, { name, description, license_type, permission_level });
+    res.json({ message: '披风信息已更新' });
+  } catch (error: any) {
+    console.error('Update cape error:', error);
+    res.status(500).json({ error: 'InternalServerError', errorMessage: error.message || '更新失败' });
+  }
+});
+
+/**
  * DELETE /api/capes/:capeId
  * 删除披风
  */

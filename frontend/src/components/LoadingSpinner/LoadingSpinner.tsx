@@ -1,4 +1,7 @@
+import { useTranslation } from 'react-i18next';
+
 export function LoadingSpinner() {
+  const { t } = useTranslation();
   return (
     <div style={{
       display: 'flex',
@@ -6,7 +9,7 @@ export function LoadingSpinner() {
       alignItems: 'center',
       minHeight: '200px',
     }}>
-      <div>加载中...</div>
+      <div>{t('common.loading', 'Loading...')}</div>
     </div>
   );
 }

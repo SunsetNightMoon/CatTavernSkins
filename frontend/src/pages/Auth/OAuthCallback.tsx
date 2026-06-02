@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Spin, Result, Button } from 'antd'
 import { useAuthStore } from '../../store/authStore'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 
 export function OAuthCallback() {
-  usePageTitle('OAuth 登录')
+  const { t } = useTranslation()
+  usePageTitle(t('auth.oauthLogin', 'OAuth Login'))
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -17,7 +19,7 @@ export function OAuthCallback() {
     const isNewUser = searchParams.get('new_user') === 'true'
 
     if (!token) {
-      setError('缺少认证令牌，请重新登录')
+      setError(t('auth.missingToken', 'Missing authentication token, please login again'))
       return
     }
 
@@ -38,23 +40,23 @@ export function OAuthCallback() {
           navigate('/', { replace: true })
         }
       } catch (err: any) {
-        setError(err.response?.data?.errorMessage || '获取用户信息失败，请重新登录')
+        setError(err.response?.data?.errorMessage || t('auth.fetchUserFailed', 'Failed to fetch user info, please login again'))
       }
     }
 
     fetchUser()
-  }, [searchParams, setAuth, navigate])
+  }, [searchParams, setAuth, navigate, t])
 
   if (error) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <Result
           status="error"
-          title="OAuth 登录失败"
+          title={t('auth.oauthLoginFailed', 'OAuth Login Failed')}
           subTitle={error}
           extra={
             <Button type="primary" href="/login">
-              返回登录
+              {t('auth.backToLogin', 'Back to Login')}
             </Button>
           }
         />
@@ -64,7 +66,7 @@ export function OAuthCallback() {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-      <Spin size="large" tip="正在完成 OAuth 登录..." />
+      <Spin size="large" tip={t('auth.completingOAuth', 'Completing OAuth login...')} />
     </div>
   )
 }

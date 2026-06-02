@@ -1,0 +1,327 @@
+# Admin Section Translation Keys
+
+## admin.dashboard
+- admin.dashboard - 管理后台
+- admin.userCount - 用户总数
+- admin.skinCount - 皮肤总数
+- admin.pendingCount - 待审核
+- admin.uploadTrend - 上传趋势
+- admin.skinUploads - 皮肤上传
+- admin.capeUploads - 披风上传
+- admin.registrationTrend - 注册趋势
+- admin.newUsers - 新用户
+- admin.pendingTrend - 待审核趋势
+- admin.pendingNew - 新增待审核
+- admin.banTrend - 封禁趋势
+- admin.newBans - 新增封禁
+- admin.loadStatsFailed - 加载统计数据失败
+- admin.loadTrendFailed - 加载趋势数据失败
+- admin.noPermission - 无权限访问
+
+## admin.users
+- admin.userManagement - 用户管理
+- admin.superAdmin - 超级管理员
+- admin.admin - 管理员
+- admin.normalUser - 普通用户
+- admin.normal - 正常
+- admin.permanentlyBanned - 已永久封禁
+- admin.bannedUntil - 封禁至 {{date}}
+- admin.loadUsersFailed - 加载用户列表失败
+- admin.toggleActiveFailed - 切换激活状态失败
+- admin.roleUpdated - 角色已更新
+- admin.unbanned - 已解除封禁
+- admin.banSuccess - 封禁成功
+- admin.banFailed - 封禁失败
+- admin.sendFailed - 发送失败
+- admin.verificationEmailSent - 验证邮件已发送
+- admin.emailVerified - 邮箱已验证
+- admin.userId - 用户ID
+- admin.email - 邮箱
+- admin.role - 角色
+- admin.accountStatus - 账号状态
+- admin.activeStatus - 激活状态
+- admin.banAction - 封禁操作
+- admin.emailVerification - 邮箱验证
+- admin.registrationTime - 注册时间
+- admin.confirmUnban - 确认解除封禁？
+- admin.temporaryBan - 临时封禁
+- admin.permanentBan - 永久封禁
+- admin.verified - 已验证
+- admin.unverified - 未验证
+- admin.manualVerifyTooltip - 手动验证邮箱
+- admin.verify - 验证
+- admin.sendVerificationEmailTooltip - 发送验证邮件
+- admin.sendEmail - 发送邮件
+- admin.editRoleModal - 编辑角色
+- admin.confirmModify - 确认修改
+- admin.roleLevel - 角色等级
+- admin.pleaseSelectRole - 请选择角色等级
+- admin.level2Desc - 等级 2：超级管理员，拥有所有权限
+- admin.level1Desc - 等级 1：管理员，可管理用户和内容
+- admin.level0Desc - 等级 0：普通用户
+- admin.unbanModalTitle - 解除封禁
+- admin.permanentBanModalTitle - 永久封禁
+- admin.temporaryBanModalTitle - 临时封禁
+- admin.confirmUnbanMessage - 确定要解除该用户的封禁吗？
+- admin.unbanExplanation - 解除封禁后，用户将恢复正常访问权限。
+- admin.permanentBanWarning - 警告：永久封禁将无法自动解除！
+- admin.afterPermanentBan - 永久封禁后：
+- admin.userCannotLogin - 用户将无法登录
+- admin.tokensCleared - 用户的所有 token 将失效
+- admin.banCannotBeAutoRemoved - 永久封禁无法自动解除，需手动操作
+- admin.banExpiryDate - 封禁到期时间
+- admin.pleaseSelectBanExpiryDate - 请选择封禁到期时间
+- admin.selectBanExpiryDate - 选择封禁到期时间
+- admin.banAutoRemoval - 临时封禁到期后自动解除
+
+## admin.skins
+- admin.skinApproval - 皮肤审核
+- admin.skinManagement - 皮肤管理
+- admin.loadSkinsFailed - 加载皮肤列表失败
+- admin.approved - 已通过
+- admin.rejected - 已拒绝
+- admin.approve - 通过
+- admin.reject - 拒绝
+- admin.rejectSkin - 拒绝皮肤
+- admin.confirmRejectSkin - 确定要拒绝这个皮肤吗？
+- admin.approveSkinFailed - 批准皮肤失败
+- admin.rejectSkinFailed - 拒绝皮肤失败
+- admin.skinUpdated - 皮肤信息已更新
+- admin.skinDeleted - 皮肤已删除
+- admin.confirmDeleteSkin - 确定要删除这个皮肤吗？
+- admin.delete - 删除
+- admin.editSkinInfo - 编辑皮肤信息
+- admin.skinName - 皮肤名称
+- admin.skinNamePlaceholder - 请输入皮肤名称
+- admin.skinDescriptionPlaceholder - 描述一下这个皮肤...
+- admin.licenseType - 许可证类型
+- admin.pleaseSelectLicense - 请选择许可证类型
+- admin.licenseARR - ARR (保留所有权利)
+- admin.licenseCC0 - CC0 (公有领域)
+- admin.licenseCCBY - CC-BY (署名)
+- admin.licenseCCBYSA - CC-BY-SA (署名-相同方式共享)
+- admin.permissionLevel - 权限级别
+- admin.private - 私有
+- admin.publicNoDownload - 公开不可下载
+- admin.publicDownloadable - 公开可下载
+- admin.skinDetail - 皮肤详情
+- admin.modelType - 模型类型
+- admin.classic - 经典
+- admin.slim - 纤细
+- admin.approvalStatus - 审核状态
+- admin.downloadCount - 下载次数
+- admin.viewCount - 浏览次数
+- admin.totalSkins - 共 {{total}} 个皮肤
+
+## admin.capes
+- admin.capeApproval - 披风审核
+- admin.capeManagement - 披风管理
+- admin.loadCapesFailed - 加载披风列表失败
+- admin.approveCapeFailed - 批准披风失败
+- admin.rejectCapeFailed - 拒绝披风失败
+- admin.capeUpdated - 披风信息已更新
+- admin.capeDeleted - 披风已删除
+- admin.confirmDeleteCape - 确定要删除这个披风吗？
+- admin.editCapeInfo - 编辑披风信息
+- admin.capeName - 披风名称
+- admin.capeNamePlaceholder - 请输入披风名称
+- admin.capeDescriptionPlaceholder - 描述一下这个披风...
+- admin.capeDetail - 披风详情
+- admin.totalCapes - 共 {{total}} 个披风
+
+## admin.blacklist
+- admin.blacklistManagement - 黑名单管理
+- admin.blacklistDescription - 将邮箱或 IP 地址加入黑名单后，相关用户将无法注册或登录。
+- admin.loadBlacklistFailed - 加载黑名单失败
+- admin.addedToBlacklist - 已添加到黑名单
+- admin.removedFromBlacklist - 已从黑名单移除
+- admin.confirmRemoveFromBlacklist - 确定要将此条目从黑名单中移除吗？
+- admin.cleanedExpired - 已清理 {{count}} 个过期条目
+- admin.cleanupFailed - 清理失败
+- admin.permanentBan - 永久封禁
+- admin.temporaryBan - 临时封禁
+- admin.expired - 已过期
+- admin.banType - 封禁类型
+- admin.banUntil - 封禁到期时间
+- admin.banTime - 封禁时间
+- admin.reason - 原因
+- admin.banReason - 封禁原因
+- admin.banReasonPlaceholder - 可选：输入封禁原因...
+- admin.addToBlacklistButton - 添加到黑名单
+- admin.addToBlacklist - 添加到黑名单
+- admin.emailOrIpExtra - 至少填写邮箱或 IP 地址之一
+- admin.enterEmailToBan - 输入要封禁的邮箱
+- admin.enterIpToBan - 输入要封禁的 IP 地址
+- admin.pleaseSelectBanType - 请选择封禁类型
+- admin.permanent - 永久
+- admin.cleanupExpired - 清理过期 ({{count}})
+- admin.warning - 警告
+- admin.blacklistWarning1 - 加入黑名单后，相关用户将无法注册或登录
+- admin.blacklistWarning2 - 请谨慎操作，避免误封
+- admin.blacklistWarning3 - 临时封禁到期后自动解除
+
+## admin.settings
+- admin.systemSettings - 系统设置
+- admin.registrationSettings - 注册设置
+- admin.allowRegistration - 允许注册
+- admin.allowRegistrationTooltip - 关闭后，新用户将无法注册
+- admin.requireEmailVerification - 需要邮箱验证
+- admin.requireEmailVerificationTooltip - 开启后，用户注册时需要验证邮箱
+- admin.enableCaptcha - 启用验证码
+- admin.enableCaptchaTooltip - 开启后，注册和登录时需要验证码
+- admin.saveRegistrationSettings - 保存注册设置
+- admin.loadFailed - 加载失败
+- admin.loadSettingsFailed - 加载设置失败
+- admin.siteSettings - 站点设置
+- admin.siteTitle - 站点标题
+- admin.pleaseEnterSiteTitle - 请输入站点标题
+- admin.siteDescription - 站点描述
+- admin.pleaseEnterSiteDescription - 请输入站点描述
+- admin.siteFavicon - 站点图标
+- admin.homepageTitlePrefix - 首页标题前缀
+- admin.pleaseEnterHomepageTitlePrefix - 请输入首页标题前缀
+- admin.homepageTitlePrefixTooltip - 显示在首页主标题之前，如"欢迎来到"
+- admin.homepageSubtitle - 首页副标题
+- admin.pleaseEnterHomepageSubtitle - 请输入首页副标题
+- admin.homepageSubtitleTooltip - 首页主标题，如"WELCOME TO SKIN2!"
+- admin.homepageMainButton - 首页主按钮文字
+- admin.pleaseEnterMainButtonText - 请输入主按钮文字
+- admin.homepageMainButtonTooltip - 首页主按钮的显示文字
+- admin.homepageExtraButtons - 首页额外按钮
+- admin.maxButtonsHint - 最多 4 个额外按钮，当前 {{current}} 个
+- admin.buttonNumber - 按钮 {{number}}
+- admin.buttonText - 按钮文字
+- admin.buttonLink - 按钮链接
+- admin.addButton - 添加按钮
+- admin.maxButtonsWarning - 最多只能添加 4 个额外按钮
+- admin.saveSiteSettings - 保存站点设置
+- admin.siteSettingsSaved - 站点设置已保存
+- admin.themeSettings - 主题设置
+- admin.lightModeBgImage - 亮色模式背景图
+- admin.lightModeBgImageTooltip - 支持 JPG、PNG、WebP 图片或 MP4、WebM 视频
+- admin.lightBgPreview - 亮色背景预览
+- admin.lightBgUploaded - 亮色背景已上传
+- admin.lightBgRemoved - 亮色背景已移除
+- admin.darkModeBgImage - 暗色模式背景图
+- admin.darkModeBgImageTooltip - 支持 JPG、PNG、WebP 图片或 MP4、WebM 视频
+- admin.darkBgPreview - 暗色背景预览
+- admin.darkBgUploaded - 暗色背景已上传
+- admin.darkBgRemoved - 暗色背景已移除
+- admin.loginBgImage - 登录页背景图
+- admin.loginBgImageTooltip - 支持 JPG、PNG、WebP 图片或 MP4、WebM 视频
+- admin.loginBgPreview - 登录页背景预览
+- admin.loginBgUploaded - 登录页背景已上传
+- admin.loginBgRemoved - 登录页背景已移除
+- admin.loginEmbedImage - 登录页内嵌图片
+- admin.loginEmbedImageTooltip - 显示在登录/注册表单旁边的图片，支持 JPG、PNG、WebP、APNG、WebP、MP4、WebM
+- admin.embedImagePreview - 内嵌图片预览
+- admin.loginEmbedUploaded - 登录页内嵌图片已上传
+- admin.loginEmbedRemoved - 登录页内嵌图片已移除
+- admin.videoMuted - 视频静音
+- admin.videoMutedTooltip - 控制首页背景视频是否默认静音
+- admin.muted - 静音
+- admin.soundOn - 有声音
+- admin.lightOverlayOpacity - 亮色蒙版透明度
+- admin.lightOverlayOpacityTooltip - 背景图上叠加的蒙版透明度
+- admin.darkOverlayOpacity - 暗色蒙版透明度
+- admin.darkOverlayOpacityTooltip - 背景图上叠加的蒙版透明度
+- admin.saveThemeSettings - 保存主题设置
+- admin.themeSettingsSaved - 主题设置已保存
+- admin.emailSettings - 邮箱设置
+- admin.siteUrl - 站点 URL
+- admin.pleaseEnterSiteUrl - 请输入站点 URL
+- admin.siteUrlTooltip - 用于生成验证链接，如 https://skin.example.com
+- admin.smtpHost - SMTP 主机
+- admin.pleaseEnterSmtpHost - 请输入 SMTP 主机
+- admin.smtpPort - SMTP 端口
+- admin.pleaseEnterSmtpPort - 请输入 SMTP 端口
+- admin.smtpSecure - SMTP 安全连接
+- admin.smtpUser - SMTP 用户名
+- admin.pleaseEnterSmtpUser - 请输入 SMTP 用户名
+- admin.smtpUserTooltip - 发件人邮箱地址
+- admin.smtpPass - SMTP 密码
+- admin.smtpPassPlaceholder - 留空表示不修改
+- admin.smtpPassTooltip - 邮箱密码或授权码，留空表示不修改
+- admin.smtpFrom - 发件人地址
+- admin.pleaseEnterSmtpFrom - 请输入发件人地址
+- admin.smtpFromTooltip - 收到的邮件中显示的发件人地址
+- admin.smtpFromName - 发件人名称
+- admin.smtpFromNameTooltip - 收到的邮件中显示的名称
+- admin.testSmtpConnection - 测试 SMTP 连接
+- admin.smtpConnected - SMTP 连接成功
+- admin.smtpFailed - SMTP 连接失败
+- admin.verificationEmailTemplate - 验证邮件模板
+- admin.editEmailTemplate - 编辑邮件模板
+- admin.templatePlaceholders - 可用占位符：
+- admin.emailSubject - 邮件主题
+- admin.emailSubjectPlaceholder - 请输入邮件主题
+- admin.emailContentHtml - 邮件内容 (HTML)
+- admin.availablePlaceholders - 可用占位符
+- admin.placeholderEmail - 收件人邮箱
+- admin.placeholderVerifyUrl - 验证链接
+- admin.placeholderYear - 当前年份
+- admin.saveEmailSettings - 保存邮箱设置
+- admin.emailSettingsSaved - 邮箱设置已保存
+- admin.loadEmailTemplateFailed - 加载邮件模板失败
+- admin.emailSubjectRequired - 请输入邮件主题
+- admin.emailContentRequired - 请输入邮件内容
+- admin.emailTemplateSaved - 邮件模板已保存
+- admin.resetToDefault - 恢复默认
+- admin.templateResetToDefault - 邮件模板已恢复为默认
+- admin.saveTemplate - 保存模板
+- admin.loadingEditor - 加载编辑器中...
+- admin.uploadFailed - 上传失败
+- admin.deleteFailed - 删除失败
+- admin.updateFailed - 更新失败
+- admin.copyrightSettings - 版权设置
+- admin.copyrightText - 自定义版权标识
+- admin.pleaseEnterCopyrightText - 请输入版权标识
+- admin.copyrightTextTooltip - 显示在页脚的主版权信息，支持 HTML
+- admin.copyrightBeian - 备案信息（可选）
+- admin.copyrightBeianTooltip - ICP 备案号等信息，留空则不显示
+- admin.copyrightBeianPlaceholder - 例：京ICP备xxxxxxxx号-x
+- admin.copyrightWarningTitle - 项目版权标识（不可私自更改）
+- admin.copyrightWarning1 - 当前值：Powered by CatTavernSkins
+- admin.copyrightWarning2 - 此标识为项目硬编码版权声明，不可通过管理面板更改。
+- admin.copyrightWarning3 - 私自移除或修改此标识将违反项目开源协议。
+- admin.saveCopyrightSettings - 保存版权设置
+- admin.copyrightSettingsSaved - 版权设置已保存
+
+## admin.common
+- admin.pending - 待审核
+- admin.id - ID
+- admin.uploader - 上传者
+- admin.preview - 预览
+- admin.model - 模型
+- admin.license - 许可证
+- admin.permission - 权限
+- admin.status - 状态
+- admin.uploadTime - 上传时间
+- admin.action - 操作
+- admin.name - 名称
+- admin.description - 描述
+- admin.viewDownload - 浏览/下载
+- admin.ipAddress - IP 地址
+- admin.remove - 移除
+- admin.globalAutoApply - 自动应用
+- admin.saveSettings - 保存设置
+- common.on - 开
+- common.off - 关
+- common.yes - 是
+- common.no - 否
+- common.confirm - 确认
+- common.cancel - 取消
+- common.edit - 编辑
+- common.save - 保存
+- common.add - 添加
+- common.delete - 删除
+- common.reset - 重置
+- common.view - 查看
+- common.loading - 加载中
+- common.requestFailed - 请求失败
+- common.requestFailedWithStatus - 请求失败 ({{status}})
+- common.operationSuccess - 操作成功
+- common.operationFailed - 操作失败：{{message}}
+- common.operationFailedWithStatus - 操作失败 ({{status}})
+- common.unknownError - 未知错误
+- common.totalItems - 共 {{total}} 条

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Table, Tag, Button, Space, message, Modal, Descriptions } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuthStore } from '../../store/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface Skin {
   id: string;
@@ -18,6 +19,7 @@ interface Skin {
 }
 
 function SkinApproval() {
+  const { t } = useTranslation()
   const [skins, setSkins] = useState<Skin[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSkin, setSelectedSkin] = useState<Skin | null>(null)
@@ -38,13 +40,13 @@ function SkinApproval() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `请求失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.requestFailedWithStatus', { status: response.status }))
       }
       const data = await response.json()
       setSkins(data)
     } catch (error: any) {
-      message.error(`加载皮肤列表失败: ${error.message}`)
-      console.error('加载皮肤列表失败:', error)
+      message.error(t('admin.loadSkinsFailed', { message: error.message }))
+      console.error(t('admin.loadSkinsFailed'), error)
     } finally {
       setLoading(false)
     }
@@ -60,20 +62,20 @@ function SkinApproval() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
       }
-      message.success('审核通过')
+      message.success(t('admin.approved'))
       loadPendingSkins()
     } catch (error: any) {
-      message.error(`操作失败: ${error.message}`)
-      console.error('审核皮肤失败:', error)
+      message.error(t('common.operationFailed', { message: error.message }))
+      console.error(t('admin.approveSkinFailed'), error)
     }
   }
 
   const handleReject = (skinId: string) => {
     Modal.confirm({
-      title: '拒绝皮肤',
-      content: '确定要拒绝这个皮肤吗？',
+      title: t('admin.rejectSkin'),
+      content: t('admin.confirmRejectSkin'),
       onOk: async () => {
         try {
           const response = await fetch(`/api/admin/skins/${skinId}/reject`, {
@@ -84,13 +86,13 @@ function SkinApproval() {
           })
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+            throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
           }
-          message.success('已拒绝')
+          message.success(t('admin.rejected'))
           loadPendingSkins()
         } catch (error: any) {
-          message.error(`操作失败: ${error.message}`)
-          console.error('拒绝皮肤失败:', error)
+          message.error(t('common.operationFailed', { message: error.message }))
+          console.error(t('admin.rejectSkinFailed'), error)
         }
       },
     })
@@ -103,20 +105,20 @@ function SkinApproval() {
 
   const columns: ColumnsType<Skin> = [
     {
-      title: 'ID',
+      title: t('admin.id'),
       dataIndex: 'id',
       key: 'id',
       width: 80,
     },
     {
-      title: '上传者',
+      title: t('admin.uploader'),
       dataIndex: 'uploader_name',
       key: 'uploader_name',
       width: 100,
       render: (name: string | undefined, record: Skin) => name || `UID.${record.user_uid}`,
     },
     {
-      title: '预览',
+      title: t('admin.preview'),
       key: 'preview',
       width: 70,
       render: (_, record: Skin) => (
@@ -128,35 +130,35 @@ function SkinApproval() {
       ),
     },
     {
-      title: '模型',
+      title: t('admin.model'),
       dataIndex: 'model_type',
       key: 'model_type',
       width: 80,
-      render: (type: string) => type === 'default' ? '经典' : '纤细',
+      render: (type: string) => type === 'default' ? t('admin.classic') : t('admin.slim'),
     },
     {
-      title: '协议',
+      title: t('admin.license'),
       dataIndex: 'license_type',
       key: 'license_type',
       width: 120,
       render: (type: string) => <Tag>{type}</Tag>,
     },
     {
-      title: '权限',
+      title: t('admin.permission'),
       dataIndex: 'permission_level',
       key: 'permission_level',
       width: 120,
       render: (level: string) => {
         const map: Record<string, string> = {
-          private: '私有',
-          public_no_download: '公开不可下载',
-          public_downloadable: '公开可下载',
+          private: t('admin.private'),
+          public_no_download: t('admin.publicNoDownload'),
+          public_downloadable: t('admin.publicDownloadable'),
         }
         return map[level] || level
       },
     },
     {
-      title: '状态',
+      title: t('admin.status'),
       dataIndex: 'approval_status',
       key: 'approval_status',
       width: 100,
@@ -167,28 +169,28 @@ function SkinApproval() {
           rejected: 'red',
         }
         const textMap: Record<string, string> = {
-          pending: '待审核',
-          approved: '已通过',
-          rejected: '已拒绝',
+          pending: t('admin.pending'),
+          approved: t('admin.approved'),
+          rejected: t('admin.rejected'),
         }
         return <Tag color={colorMap[status]}>{textMap[status]}</Tag>
       },
     },
     {
-      title: '上传时间',
+      title: t('admin.uploadTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 200,
       render: (_, record: Skin) => (
         <Space>
           <Button type="link" onClick={() => handleViewDetail(record)}>
-            查看
+            {t('common.view')}
           </Button>
           {record.approval_status === 'pending' && (
             <>
@@ -197,7 +199,7 @@ function SkinApproval() {
                 size="small"
                 onClick={() => handleApprove(record.id)}
               >
-                通过
+                {t('admin.approve')}
               </Button>
               <Button 
                 type="primary" 
@@ -205,7 +207,7 @@ function SkinApproval() {
                 size="small"
                 onClick={() => handleReject(record.id)}
               >
-                拒绝
+                {t('admin.reject')}
               </Button>
             </>
           )}
@@ -216,18 +218,18 @@ function SkinApproval() {
 
   return (
     <div>
-      <h2>皮肤审核</h2>
+      <h2>{t('admin.skinApproval')}</h2>
       <Table 
         columns={columns} 
         dataSource={skins} 
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 个` }}
+        pagination={{ pageSize: 10, showTotal: (total) => t('common.totalItems', { total }) }}
         size="small"
       />
 
       <Modal
-        title="皮肤详情"
+        title={t('admin.skinDetail')}
         open={detailVisible}
         onCancel={() => setDetailVisible(false)}
         footer={null}
@@ -243,27 +245,27 @@ function SkinApproval() {
               />
             </div>
             <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="ID">{selectedSkin.id}</Descriptions.Item>
-              <Descriptions.Item label="上传者">{selectedSkin.uploader_name || `UID.${selectedSkin.user_uid}`}</Descriptions.Item>
-              <Descriptions.Item label="模型类型">
-                {selectedSkin.model_type === 'default' ? '经典' : '纤细'}
+              <Descriptions.Item label={t('admin.id')}>{selectedSkin.id}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.uploader')}>{selectedSkin.uploader_name || `UID.${selectedSkin.user_uid}`}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.modelType')}>
+                {selectedSkin.model_type === 'default' ? t('admin.classic') : t('admin.slim')}
               </Descriptions.Item>
-              <Descriptions.Item label="协议">
+              <Descriptions.Item label={t('admin.license')}>
                 <Tag>{selectedSkin.license_type}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="权限级别">
-                {selectedSkin.permission_level === 'private' && '私有'}
-                {selectedSkin.permission_level === 'public_no_download' && '公开不可下载'}
-                {selectedSkin.permission_level === 'public_downloadable' && '公开可下载'}
+              <Descriptions.Item label={t('admin.permissionLevel')}>
+                {selectedSkin.permission_level === 'private' && t('admin.private')}
+                {selectedSkin.permission_level === 'public_no_download' && t('admin.publicNoDownload')}
+                {selectedSkin.permission_level === 'public_downloadable' && t('admin.publicDownloadable')}
               </Descriptions.Item>
-              <Descriptions.Item label="审核状态">
-                {selectedSkin.approval_status === 'pending' && <Tag color="orange">待审核</Tag>}
-                {selectedSkin.approval_status === 'approved' && <Tag color="green">已通过</Tag>}
-                {selectedSkin.approval_status === 'rejected' && <Tag color="red">已拒绝</Tag>}
+              <Descriptions.Item label={t('admin.approvalStatus')}>
+                {selectedSkin.approval_status === 'pending' && <Tag color="orange">{t('admin.pending')}</Tag>}
+                {selectedSkin.approval_status === 'approved' && <Tag color="green">{t('admin.approved')}</Tag>}
+                {selectedSkin.approval_status === 'rejected' && <Tag color="red">{t('admin.rejected')}</Tag>}
               </Descriptions.Item>
-              <Descriptions.Item label="下载次数">{selectedSkin.download_count}</Descriptions.Item>
-              <Descriptions.Item label="浏览次数">{selectedSkin.view_count}</Descriptions.Item>
-              <Descriptions.Item label="上传时间">
+              <Descriptions.Item label={t('admin.downloadCount')}>{selectedSkin.download_count}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.viewCount')}>{selectedSkin.view_count}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.uploadTime')}>
                 {new Date(selectedSkin.created_at).toLocaleString()}
               </Descriptions.Item>
             </Descriptions>

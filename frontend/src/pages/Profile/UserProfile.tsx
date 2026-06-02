@@ -4,19 +4,20 @@ import {
   Button, Descriptions, message, Tag, Divider, Typography,
   Modal, Form, Input, Spin, Alert, Space,
 } from 'antd'
-import { ArrowLeftOutlined, EditOutlined, CheckCircleOutlined, CloseCircleOutlined, MailOutlined, LinkOutlined, CopyOutlined, ExclamationCircleOutlined, LockOutlined, SafetyOutlined, KeyOutlined } from '@ant-design/icons'
+import { EditOutlined, CheckCircleOutlined, CloseCircleOutlined, MailOutlined, LinkOutlined, CopyOutlined, ExclamationCircleOutlined, LockOutlined, SafetyOutlined, KeyOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/authStore'
 import { SkinAvatar } from '../../components/SkinAvatar'
 import { profileService } from '../../services/profileService'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 
-function getRoleName(level: number): string {
+function getRoleNameKey(level: number): string {
   switch (level) {
-    case 2: return '超级管理员'
-    case 1: return '管理员'
-    default: return '普通用户'
+    case 2: return 'profile.superAdmin'
+    case 1: return 'profile.admin'
+    default: return 'profile.user'
   }
 }
 
@@ -37,7 +38,8 @@ interface ProfileInfo {
 }
 
 export function UserProfile() {
-  usePageTitle('个人中心')
+  const { t } = useTranslation()
+  usePageTitle(t('nav.profile'))
   const { user, token, skinUrl, profileName, setProfileName, clearAuth, updateUser, setSkinUrl } = useAuthStore()
   const navigate = useNavigate()
 
@@ -93,7 +95,7 @@ export function UserProfile() {
           setProfiles(data.profiles)
         }
       } catch (err: any) {
-        console.error('获取角色信息失败:', err)
+        console.error(t('profile.fetchProfileFailed'), err)
       } finally {
         setLoadingProfiles(false)
       }
@@ -136,10 +138,10 @@ export function UserProfile() {
         headers: { 'Authorization': `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.errorMessage || '发送失败')
-      message.success('验证邮件已发送，请查收邮箱')
+      if (!res.ok) throw new Error(data.errorMessage || t('profile.sendFailed'))
+      message.success(t('profile.verificationEmailSent'))
     } catch (err: any) {
-      message.error(err.message || '发送失败')
+      message.error(err.message || t('profile.sendFailed'))
     } finally {
       setSendingVerify(false)
     }
@@ -148,7 +150,7 @@ export function UserProfile() {
   // 注销账号
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
-      message.error('请输入密码')
+      message.error(t('profile.enterPassword'))
       return
     }
 
@@ -165,14 +167,14 @@ export function UserProfile() {
 
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.errorMessage || '注销失败')
+        throw new Error(data.errorMessage || t('profile.deleteFailed'))
       }
 
-      message.success('账号已注销')
+      message.success(t('profile.accountDeleted'))
       clearAuth()
       navigate('/login')
     } catch (err: any) {
-      message.error(err.message || '注销失败')
+      message.error(err.message || t('profile.deleteFailed'))
     } finally {
       setDeletingAccount(false)
     }
@@ -181,15 +183,15 @@ export function UserProfile() {
   // 修改密码
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      message.error('请填写所有字段')
+      message.error(t('profile.fillAllFields'))
       return
     }
     if (newPassword.length < 6) {
-      message.error('新密码长度至少6位')
+      message.error(t('profile.passwordMinLength'))
       return
     }
     if (newPassword !== confirmPassword) {
-      message.error('两次输入的新密码不一致')
+      message.error(t('profile.passwordMismatch'))
       return
     }
 
@@ -204,9 +206,9 @@ export function UserProfile() {
         body: JSON.stringify({ oldPassword, newPassword }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.errorMessage || '修改失败')
+      if (!res.ok) throw new Error(data.errorMessage || t('profile.modifyFailed'))
 
-      message.success('密码已修改，请重新登录')
+      message.success(t('profile.passwordChanged'))
       setChangePwdModalOpen(false)
       setOldPassword('')
       setNewPassword('')
@@ -215,7 +217,7 @@ export function UserProfile() {
       clearAuth()
       navigate('/login')
     } catch (err: any) {
-      message.error(err.message || '修改失败')
+      message.error(err.message || t('profile.modifyFailed'))
     } finally {
       setChangingPassword(false)
     }
@@ -232,12 +234,12 @@ export function UserProfile() {
         },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.errorMessage || '发送失败')
+      if (!res.ok) throw new Error(data.errorMessage || t('profile.sendFailed'))
 
-      message.success('重置邮件已发送，请查收邮箱')
+      message.success(t('profile.resetEmailSent'))
       setForgotPwdStep(1)
     } catch (err: any) {
-      message.error(err.message || '发送失败')
+      message.error(err.message || t('profile.sendFailed'))
     } finally {
       setSendingResetEmail(false)
     }
@@ -246,15 +248,15 @@ export function UserProfile() {
   // 使用验证码重置密码
   const handleResetPassword = async () => {
     if (!resetCode || !forgotNewPassword || !forgotConfirmPassword) {
-      message.error('请填写所有字段')
+      message.error(t('profile.fillAllFields'))
       return
     }
     if (forgotNewPassword.length < 6) {
-      message.error('新密码长度至少6位')
+      message.error(t('profile.passwordMinLength'))
       return
     }
     if (forgotNewPassword !== forgotConfirmPassword) {
-      message.error('两次输入的新密码不一致')
+      message.error(t('profile.passwordMismatch'))
       return
     }
 
@@ -268,9 +270,9 @@ export function UserProfile() {
         body: JSON.stringify({ code: resetCode, newPassword: forgotNewPassword }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.errorMessage || '重置失败')
+      if (!res.ok) throw new Error(data.errorMessage || t('profile.resetFailed'))
 
-      message.success('密码已重置，请使用新密码登录')
+      message.success(t('profile.passwordReset'))
       setForgotPwdModalOpen(false)
       setForgotPwdStep(0)
       setResetCode('')
@@ -279,7 +281,7 @@ export function UserProfile() {
       clearAuth()
       navigate('/login')
     } catch (err: any) {
-      message.error(err.message || '重置失败')
+      message.error(err.message || t('profile.resetFailed'))
     } finally {
       setResettingPassword(false)
     }
@@ -287,7 +289,7 @@ export function UserProfile() {
 
   const handleLogout = () => {
     clearAuth()
-    message.success('已退出登录')
+    message.success(t('profile.loggedOut'))
     navigate('/login')
   }
 
@@ -301,15 +303,15 @@ export function UserProfile() {
   // 检测名称可用性
   const handleCheckName = async () => {
     if (!editName || editName.length < 3 || editName.length > 16) {
-      setCheckResult({ available: false, message: '名称长度必须在3-16个字符之间' })
+      setCheckResult({ available: false, message: t('profile.nameLengthError') })
       return
     }
     if (!/^[a-zA-Z0-9_]+$/.test(editName)) {
-      setCheckResult({ available: false, message: '名称只能包含字母、数字和下划线' })
+      setCheckResult({ available: false, message: t('profile.nameFormatError') })
       return
     }
     if (editName === currentGameName) {
-      setCheckResult({ available: false, message: '新名称与当前名称相同' })
+      setCheckResult({ available: false, message: t('profile.sameNameError') })
       return
     }
     setCheckingName(true)
@@ -317,7 +319,7 @@ export function UserProfile() {
       const result = await profileService.checkNameAvailability(editName)
       setCheckResult(result)
     } catch (err: any) {
-      setCheckResult({ available: false, message: err.response?.data?.errorMessage || '检测失败' })
+      setCheckResult({ available: false, message: err.response?.data?.errorMessage || t('profile.checkFailed') })
     } finally {
       setCheckingName(false)
     }
@@ -326,13 +328,13 @@ export function UserProfile() {
   // 保存名称
   const handleSaveName = async () => {
     if (!primaryProfile?.id) {
-      message.error('未找到角色信息')
+      message.error(t('profile.noCharacterFound'))
       return
     }
     setSavingName(true)
     try {
       const result = await profileService.updateName(primaryProfile.id, editName)
-      message.success(result.message || '角色名已更新')
+      message.success(result.message || t('profile.nameUpdated'))
       setProfileName(editName)
       // 刷新角色信息
       const meData = await profileService.getMe()
@@ -341,10 +343,10 @@ export function UserProfile() {
       }
       setIsEditModalOpen(false)
     } catch (err: any) {
-      const errMsg = err.response?.data?.errorMessage || '更新失败'
+      const errMsg = err.response?.data?.errorMessage || t('profile.updateFailed')
       if (err.response?.status === 429) {
         const days = err.response?.data?.days_remaining
-        message.error(`改名冷却中，${days}天后可再次改名`)
+        message.error(t('profile.nameChangeCooldown', { days }))
       } else {
         message.error(errMsg)
       }
@@ -354,7 +356,7 @@ export function UserProfile() {
   }
 
   if (!user) {
-    return <div style={{ padding: 20 }}>请先登录</div>
+    return <div style={{ padding: 20 }}>{t('profile.pleaseLoginFirst')}</div>
   }
 
   // 兼容后端返回的 number 类型（SQLite 返回 0/1）
@@ -367,20 +369,11 @@ export function UserProfile() {
   )
   const isPermanentBan = bannedUntil === 'permanent'
   const banExpiryText = !isPermanentBan && bannedUntil
-    ? `解除日期: ${new Date(bannedUntil).toLocaleDateString('zh-CN')}`
+    ? t('profile.unbanDate', { date: new Date(bannedUntil).toLocaleDateString('zh-CN') })
     : null
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px' }}>
-      <Button
-        type="text"
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/library')}
-        style={{ marginBottom: 16 }}
-      >
-        返回材质库
-      </Button>
-
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: 24 }}>
         {/* 头部：头像 + 邮箱 + UID */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
@@ -390,13 +383,13 @@ export function UserProfile() {
               {currentGameName || user.email}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <Text type="secondary">UID: {user.user_uid}</Text>
+              <Text type="secondary">{t('profile.uid')}: {user.user_uid}</Text>
               <Divider type="vertical" />
-              <Tag color={getRoleTagColor(user.level)}>{getRoleName(user.level)}</Tag>
+              <Tag color={getRoleTagColor(user.level)}>{t(getRoleNameKey(user.level))}</Tag>
               {isVerified ? (
-                <Tag color="green">已验证</Tag>
+                <Tag color="green">{t('profile.verified')}</Tag>
               ) : (
-                <Tag color="orange">未验证</Tag>
+                <Tag color="orange">{t('profile.unverified')}</Tag>
               )}
             </div>
           </div>
@@ -412,16 +405,16 @@ export function UserProfile() {
             marginBottom: 24,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Text strong style={{ color: '#ff7875' }}>账号状态：已被封禁</Text>
+              <Text strong style={{ color: '#ff7875' }}>{t('profile.accountBanned')}</Text>
               {isPermanentBan ? (
-                <Tag color="red">永久封禁</Tag>
+                <Tag color="red">{t('profile.permanentlyBanned')}</Tag>
               ) : banExpiryText ? (
                 <Tag color="orange">{banExpiryText}</Tag>
               ) : null}
             </div>
             {banExpiryText && (
               <Text type="secondary" style={{ fontSize: 12 }}>
-                封禁截止日期：{new Date(bannedUntil!).toLocaleDateString('zh-CN', {
+                {t('profile.banExpiryDate')}：{new Date(bannedUntil!).toLocaleDateString('zh-CN', {
                   year: 'numeric', month: 'long', day: 'numeric'
                 })}
               </Text>
@@ -435,62 +428,62 @@ export function UserProfile() {
             padding: '12px 16px',
             marginBottom: 24,
           }}>
-            <Text strong style={{ color: '#95de64' }}>账号状态：正常</Text>
+            <Text strong style={{ color: '#95de64' }}>{t('profile.accountStatusNormal')}</Text>
           </div>
         )}
 
         {/* 详细信息 */}
         <Descriptions column={1} bordered size="small">
-          <Descriptions.Item label="用户 ID">{user.user_uid}</Descriptions.Item>
-          <Descriptions.Item label="玩家名称">
+          <Descriptions.Item label={t('profile.userId')}>{user.user_uid}</Descriptions.Item>
+          <Descriptions.Item label={t('profile.playerName')}>
             <Space>
               <Text strong style={{ fontSize: 16 }}>
                 {loadingProfiles ? <Spin size="small" /> : (currentGameName || '—')}
               </Text>
               <Button size="small" icon={<EditOutlined />} onClick={openEditModal}>
-                编辑
+                {t('common.edit')}
               </Button>
             </Space>
             {cooldown.inCooldown && (
               <div style={{ marginTop: 4 }}>
                 <Tag color="orange">
-                  改名冷却中：{cooldown.daysRemaining} 天后可再次改名
+                  {t('profile.nameChangeCooldown', { days: cooldown.daysRemaining })}
                 </Tag>
               </div>
             )}
           </Descriptions.Item>
-          <Descriptions.Item label="邮箱">
+          <Descriptions.Item label={t('profile.email')}>
             <Space>
               <Text>{user.email}</Text>
               {isVerified ? (
-                <Tag color="green">已验证</Tag>
+                <Tag color="green">{t('profile.verified')}</Tag>
               ) : (
                 <>
-                  <Tag color="orange">未验证</Tag>
+                  <Tag color="orange">{t('profile.unverified')}</Tag>
                   <Button size="small" icon={<MailOutlined />} loading={sendingVerify} onClick={handleSendVerification}>
-                    立即验证
+                    {t('profile.verifyNow')}
                   </Button>
                 </>
               )}
             </Space>
           </Descriptions.Item>
-          <Descriptions.Item label="身份">
-            <Tag color={getRoleTagColor(user.level)}>{getRoleName(user.level)}</Tag>
+          <Descriptions.Item label={t('profile.role')}>
+            <Tag color={getRoleTagColor(user.level)}>{t(getRoleNameKey(user.level))}</Tag>
             <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
               (Level {user.level})
             </Text>
           </Descriptions.Item>
-          <Descriptions.Item label="账号状态">
+          <Descriptions.Item label={t('profile.accountStatus')}>
             {isBanned ? (
               isPermanentBan ? (
-                <Tag color="red">被封禁 &lt;永久封禁&gt;</Tag>
+                <Tag color="red">{t('profile.banned')} &lt;{t('profile.permanentlyBanned')}&gt;</Tag>
               ) : (
                 <Tag color="orange">
-                  被封禁 &lt;{new Date(bannedUntil!).toLocaleDateString('zh-CN')} 解除&gt;
+                  {t('profile.banned')} &lt;{new Date(bannedUntil!).toLocaleDateString('zh-CN')} {t('profile.unbanDate')}&gt;
                 </Tag>
               )
             ) : (
-              <Tag color="green">正常</Tag>
+              <Tag color="green">{t('profile.normal')}</Tag>
             )}
           </Descriptions.Item>
         </Descriptions>
@@ -498,18 +491,21 @@ export function UserProfile() {
         {/* 操作按钮 */}
         <div style={{ marginTop: 24, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Button type="primary" onClick={() => navigate('/upload')}>
-            上传皮肤
+            {t('profile.uploadSkin')}
           </Button>
           <Button onClick={() => navigate('/my-skins')}>
-            我的皮肤
+            {t('profile.mySkins')}
+          </Button>
+          <Button onClick={() => navigate('/my-capes')}>
+            {t('myCapes.title')}
           </Button>
           {user.level >= 1 && (
             <Button type="dashed" onClick={() => navigate('/admin')}>
-              管理面板
+              {t('profile.adminPanel')}
             </Button>
           )}
           <Button danger onClick={handleLogout} style={{ marginLeft: 'auto' }}>
-            退出登录
+            {t('profile.logout')}
           </Button>
         </div>
       </div>
@@ -524,7 +520,7 @@ export function UserProfile() {
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 20 }}>
           <LinkOutlined style={{ marginRight: 8 }} />
-          添加 Yggdrasil 认证服务器
+          {t('profile.addYggdrasilServer')}
         </div>
 
         <div style={{
@@ -572,10 +568,10 @@ export function UserProfile() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
-            将此按钮拖至启动器
+            {t('profile.dragToLauncher')}
           </div>
           <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-weak)' }}>
-            支持 HMCL、PCL2 等支持 Yggdrasil 的启动器
+            {t('profile.supportsYggdrasil')}
           </div>
         </div>
 
@@ -583,7 +579,7 @@ export function UserProfile() {
 
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>
-            手动填写
+            {t('profile.manualEntry')}
           </div>
           <Space.Compact style={{ width: '100%' }}>
             <Input
@@ -595,19 +591,19 @@ export function UserProfile() {
               icon={<CopyOutlined />}
               onClick={() => {
                 navigator.clipboard.writeText(yggUrl)
-                message.success('已复制到剪贴板')
+                message.success(t('profile.copied'))
               }}
             >
-              复制
+              {t('profile.copy')}
             </Button>
           </Space.Compact>
         </div>
 
         <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.8 }}>
-          <div style={{ marginBottom: 4, fontWeight: 600, color: 'var(--text-muted)' }}>使用说明</div>
-          <div>1. 拖拽方式：按住上方绿色按钮，直接拖入 HMCL / PCL2 启动器的认证服务器添加区域</div>
-          <div>2. 手动方式：复制上方 API 地址，在启动器中粘贴添加</div>
-          <div>3. 添加成功后，使用你的邮箱和密码登录即可</div>
+          <div style={{ marginBottom: 4, fontWeight: 600, color: 'var(--text-muted)' }}>{t('profile.usageInstructions')}</div>
+          <div>{t('profile.dragInstruction')}</div>
+          <div>{t('profile.manualInstruction')}</div>
+          <div>{t('profile.afterAdding')}</div>
         </div>
       </div>
 
@@ -628,10 +624,10 @@ export function UserProfile() {
         }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: '#52c41a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <SafetyOutlined />
-            功能区
+            {t('profile.securityZone')}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.8 }}>
-            <div>管理你的账号安全设置，包括修改密码或通过邮件验证找回密码。</div>
+            <div>{t('profile.manageSecurity')}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Button
@@ -645,7 +641,7 @@ export function UserProfile() {
               }}
               style={{ fontWeight: 500, justifyContent: 'flex-start' }}
             >
-              修改密码
+              {t('profile.modifyPassword')}
             </Button>
             <Button
               icon={<KeyOutlined />}
@@ -659,7 +655,7 @@ export function UserProfile() {
               }}
               style={{ fontWeight: 500, justifyContent: 'flex-start' }}
             >
-              找回密码
+              {t('profile.recoverPassword')}
             </Button>
           </div>
         </div>
@@ -674,15 +670,15 @@ export function UserProfile() {
           }}>
             <div style={{ fontSize: 16, fontWeight: 600, color: '#ff4d4f', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <ExclamationCircleOutlined />
-              危险区
+              {t('profile.dangerZone')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.8 }}>
-              <div>注销账号将<Text strong style={{ color: '#ff4d4f' }}>永久删除</Text>你的所有数据，包括：</div>
-              <div>• 账号信息（邮箱、密码等）</div>
-              <div>• 所有上传的皮肤和披风</div>
-              <div>• 角色信息</div>
-              <div>• 收藏记录</div>
-              <div style={{ marginTop: 8, color: 'var(--text-subtle)' }}>此操作不可恢复，请谨慎操作。</div>
+              <div>{t('profile.permanentlyDeleteWarning')}<Text strong style={{ color: '#ff4d4f' }}>{t('profile.permanentlyDelete')}</Text>{t('profile.deleteWarning')}</div>
+              <div>{t('profile.accountInfo')}</div>
+              <div>{t('profile.uploadedSkins')}</div>
+              <div>{t('profile.characterInfo')}</div>
+              <div>{t('profile.favoriteRecords')}</div>
+              <div style={{ marginTop: 8, color: 'var(--text-subtle)' }}>{t('profile.cannotRecover')}</div>
             </div>
             <Button
               danger
@@ -693,7 +689,7 @@ export function UserProfile() {
               }}
               style={{ fontWeight: 500 }}
             >
-              注销我的账号
+              {t('profile.deleteMyAccount')}
             </Button>
           </div>
         )}
@@ -704,7 +700,7 @@ export function UserProfile() {
         title={
           <span style={{ color: '#ff4d4f' }}>
             <ExclamationCircleOutlined style={{ marginRight: 8 }} />
-            确认注销账号
+            {t('profile.confirmDeleteAccount')}
           </span>
         }
         open={deleteModalOpen}
@@ -717,7 +713,7 @@ export function UserProfile() {
             setDeleteModalOpen(false)
             setDeletePassword('')
           }}>
-            取消
+            {t('profile.cancel')}
           </Button>,
           <Button
             key="delete"
@@ -727,26 +723,26 @@ export function UserProfile() {
             disabled={!deletePassword}
             onClick={handleDeleteAccount}
           >
-            确认注销
+            {t('profile.confirmDelete')}
           </Button>,
         ]}
       >
         <div style={{ marginTop: 16, marginBottom: 16 }}>
           <div style={{ marginBottom: 12, color: 'var(--text-secondary)' }}>
-            此操作将<Text strong style={{ color: '#ff4d4f' }}>永久删除</Text>你的账号和所有数据，且不可恢复。
+            {t('profile.permanentlyDeleteAccount')}<Text strong style={{ color: '#ff4d4f' }}>{t('profile.permanentlyDeleteData')}</Text>{t('profile.accountAndAllData')}
           </div>
           <div style={{ marginBottom: 16, padding: 12, background: 'rgba(255,77,79,0.08)', borderRadius: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-            <div style={{ marginBottom: 4, fontWeight: 500, color: 'var(--text-secondary)' }}>将被删除的数据：</div>
-            <div>• 账号信息（邮箱、密码）</div>
-            <div>• 所有上传的皮肤和披风文件</div>
-            <div>• 角色信息（游戏 ID）</div>
-            <div>• 所有收藏记录</div>
+            <div style={{ marginBottom: 4, fontWeight: 500, color: 'var(--text-secondary)' }}>{t('profile.dataWillBeDeleted')}</div>
+            <div>{t('profile.emailAndPassword')}</div>
+            <div>{t('profile.skinsAndCapes')}</div>
+            <div>{t('profile.gameId')}</div>
+            <div>{t('profile.favorites')}</div>
           </div>
-          <div style={{ marginBottom: 8, color: 'var(--text-muted)' }}>请输入密码以确认：</div>
+          <div style={{ marginBottom: 8, color: 'var(--text-muted)' }}>{t('profile.enterPasswordToConfirm')}</div>
           <Input.Password
             value={deletePassword}
             onChange={(e) => setDeletePassword(e.target.value)}
-            placeholder="输入你的登录密码"
+            placeholder={t('profile.enterLoginPassword')}
             onPressEnter={handleDeleteAccount}
             style={{ fontSize: 14 }}
           />
@@ -755,7 +751,7 @@ export function UserProfile() {
 
       {/* 修改密码弹窗 */}
       <Modal
-        title={<span><LockOutlined style={{ marginRight: 8 }} />修改密码</span>}
+        title={<span><LockOutlined style={{ marginRight: 8 }} />{t('profile.changePassword')}</span>}
         open={changePwdModalOpen}
         onCancel={() => {
           setChangePwdModalOpen(false)
@@ -770,7 +766,7 @@ export function UserProfile() {
             setNewPassword('')
             setConfirmPassword('')
           }}>
-            取消
+            {t('profile.cancel')}
           </Button>,
           <Button
             key="change"
@@ -779,30 +775,30 @@ export function UserProfile() {
             disabled={!oldPassword || !newPassword || !confirmPassword}
             onClick={handleChangePassword}
           >
-            确认修改
+            {t('profile.confirmModify')}
           </Button>,
         ]}
       >
         <Form layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item label="原密码" required>
+          <Form.Item label={t('profile.oldPassword')} required>
             <Input.Password
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              placeholder="输入当前密码"
+              placeholder={t('profile.enterCurrentPassword')}
             />
           </Form.Item>
-          <Form.Item label="新密码" required>
+          <Form.Item label={t('profile.newPassword')} required>
             <Input.Password
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="输入新密码（至少6位）"
+              placeholder={t('profile.enterNewPassword')}
             />
           </Form.Item>
-          <Form.Item label="确认新密码" required>
+          <Form.Item label={t('profile.confirmNewPassword')} required>
             <Input.Password
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="再次输入新密码"
+              placeholder={t('profile.reenterNewPassword')}
               onPressEnter={handleChangePassword}
             />
           </Form.Item>
@@ -811,7 +807,7 @@ export function UserProfile() {
 
       {/* 找回密码弹窗 */}
       <Modal
-        title={<span><KeyOutlined style={{ marginRight: 8 }} />{forgotPwdStep === 0 ? '找回密码' : '输入验证码'}</span>}
+        title={<span><KeyOutlined style={{ marginRight: 8 }} />{forgotPwdStep === 0 ? t('profile.retrievePassword') : t('profile.enterVerificationCode')}</span>}
         open={forgotPwdModalOpen}
         onCancel={() => {
           setForgotPwdModalOpen(false)
@@ -825,7 +821,7 @@ export function UserProfile() {
             setForgotPwdModalOpen(false)
             setForgotPwdStep(0)
           }}>
-            取消
+            {t('profile.cancel')}
           </Button>,
           <Button
             key="send"
@@ -833,11 +829,11 @@ export function UserProfile() {
             loading={sendingResetEmail}
             onClick={handleSendResetEmail}
           >
-            发送重置邮件
+            {t('profile.sendResetEmail')}
           </Button>,
         ] : [
           <Button key="back" onClick={() => setForgotPwdStep(0)}>
-            上一步
+            {t('profile.previousStep')}
           </Button>,
           <Button
             key="reset"
@@ -846,41 +842,41 @@ export function UserProfile() {
             disabled={!resetCode || !forgotNewPassword || !forgotConfirmPassword}
             onClick={handleResetPassword}
           >
-            确认重置
+            {t('profile.confirmReset')}
           </Button>,
         ]}
       >
         {forgotPwdStep === 0 ? (
           <div style={{ marginTop: 16 }}>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
-              我们将向你的邮箱 <Text strong>{user.email}</Text> 发送一封包含验证码的密码重置邮件。
+              {t('profile.weWillSendResetEmail')}<Text strong>{user.email}</Text>{t('profile.sendResetEmailMessage')}
             </p>
             <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              验证码有效期为 30 分钟，请在收到邮件后尽快完成重置。
+              {t('profile.verificationCodeValidity')}
             </p>
           </div>
         ) : (
           <Form layout="vertical" style={{ marginTop: 16 }}>
-            <Form.Item label="验证码" required>
+            <Form.Item label={t('profile.verificationCode')} required>
               <Input
                 value={resetCode}
                 onChange={(e) => setResetCode(e.target.value)}
-                placeholder="输入邮件中的8位验证码"
+                placeholder={t('profile.enter8DigitCode')}
                 maxLength={8}
               />
             </Form.Item>
-            <Form.Item label="新密码" required>
+            <Form.Item label={t('profile.newPassword')} required>
               <Input.Password
                 value={forgotNewPassword}
                 onChange={(e) => setForgotNewPassword(e.target.value)}
-                placeholder="输入新密码（至少6位）"
+                placeholder={t('profile.enterNewPasswordMin6')}
               />
             </Form.Item>
-            <Form.Item label="确认新密码" required>
+            <Form.Item label={t('profile.confirmNewPassword')} required>
               <Input.Password
                 value={forgotConfirmPassword}
                 onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                placeholder="再次输入新密码"
+                placeholder={t('profile.reenterNewPassword')}
                 onPressEnter={handleResetPassword}
               />
             </Form.Item>
@@ -890,12 +886,12 @@ export function UserProfile() {
 
       {/* 编辑名称弹窗 */}
       <Modal
-        title="编辑玩家名称"
+        title={t('profile.editPlayerName')}
         open={isEditModalOpen}
         onCancel={() => setIsEditModalOpen(false)}
         footer={[
           <Button key="cancel" onClick={() => setIsEditModalOpen(false)}>
-            取消
+            {t('profile.cancel')}
           </Button>,
           <Button
             key="save"
@@ -904,25 +900,25 @@ export function UserProfile() {
             disabled={!checkResult?.available || cooldown.inCooldown}
             onClick={handleSaveName}
           >
-            保存
+            {t('common.save')}
           </Button>,
         ]}
       >
         {cooldown.inCooldown && (
           <Alert
             type="warning"
-            message={`改名冷却中：${cooldown.daysRemaining} 天后可再次改名`}
-            description={`下次可改名时间：${cooldown.canChangeAt?.toLocaleDateString('zh-CN')}`}
+            message={t('profile.nameChangeCooldown', { days: cooldown.daysRemaining })}
+            description={`${t('profile.canChangeNameAt')}：${cooldown.canChangeAt?.toLocaleDateString('zh-CN')}`}
             style={{ marginBottom: 16 }}
             showIcon
           />
         )}
 
         <Form layout="vertical">
-          <Form.Item label="当前名称">
+          <Form.Item label={t('profile.currentName')}>
             <Input value={currentGameName} disabled />
           </Form.Item>
-          <Form.Item label="新名称">
+          <Form.Item label={t('profile.newName')}>
             <Space.Compact style={{ width: '100%' }}>
               <Input
                 value={editName}
@@ -930,7 +926,7 @@ export function UserProfile() {
                   setEditName(e.target.value)
                   setCheckResult(null)
                 }}
-                placeholder="输入新名称（3-16个字符，字母/数字/下划线）"
+                placeholder={t('profile.nameLengthHint')}
                 maxLength={16}
                 disabled={cooldown.inCooldown}
               />
@@ -939,7 +935,7 @@ export function UserProfile() {
                 loading={checkingName}
                 disabled={!editName || cooldown.inCooldown}
               >
-                检测可用性
+                {t('profile.checkAvailability')}
               </Button>
             </Space.Compact>
           </Form.Item>
