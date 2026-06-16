@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Button, Tag, Card, Descriptions, Spin, message, Space, Divider, Typography, Alert, Switch, Modal, Input } from 'antd'
 import { ArrowLeftOutlined, DownloadOutlined, HeartOutlined, HeartFilled, StarOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import type { Skin } from '../../types'
 import { Skin3DViewer } from '../../components/Skin3DViewer/Skin3DViewer'
 import { useAuthStore } from '../../store/authStore'
@@ -23,7 +24,8 @@ const LICENSE_TAG_COLORS: Record<string, string> = {
 }
 
 export function SkinDetail() {
-  usePageTitle('皮肤详情')
+  const { t } = useTranslation()
+  usePageTitle(t('detail.skinTitle'))
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -34,17 +36,12 @@ export function SkinDetail() {
 
   const skinId = id || ''
 
-  // 从后端获取收藏状态
   const [isFavoritedByUser, setIsFavoritedByUser] = useState(false)
-
-  // 管理员警告弹窗
   const [warningModalVisible, setWarningModalVisible] = useState(false)
   const [warningText, setWarningText] = useState('')
 
-  // 当前用户是否为发布者
   const isUploader = user ? Number(user.user_uid) === Number(skin?.user_uid) : false
 
-  // 返回材质库（保持 tab + 页码）
   const handleBack = useCallback(() => {
     const s = location.state as { returnTab?: string; returnPage?: number } | null
     if (s?.returnTab) {
@@ -57,12 +54,10 @@ export function SkinDetail() {
     }
   }, [location.state, navigate])
 
-  // 加载皮肤详情 + 收藏状态
   useEffect(() => {
     loadSkinDetail()
   }, [id])
 
-  // 用户登录状态或 skin 变化时，刷新收藏状态
   useEffect(() => {
     if (!skin) return
     loadFavoriteStatus()
@@ -75,8 +70,8 @@ export function SkinDetail() {
       const data = await response.json()
       setSkin(data)
     } catch (error) {
-      console.error('加载皮肤详情失败:', error)
-      message.error('加载失败')
+      console.error('Failed to load skin detail:', error)
+      message.error(t('detail.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -84,14 +79,12 @@ export function SkinDetail() {
 
   const loadFavoriteStatus = async () => {
     try {
-      // 获取收藏数
       const countRes = await fetch(`/api/skins/${skinId}/favorite-count`)
       if (countRes.ok) {
         const countData = await countRes.json()
         setFavoriteCount(countData.favoriteCount || 0)
       }
 
-      // 获取当前用户是否收藏（需要登录）
       if (token) {
         const statusRes = await fetch(`/api/skins/${skinId}/is-favorited`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -104,7 +97,7 @@ export function SkinDetail() {
         setIsFavoritedByUser(false)
       }
     } catch (error) {
-      console.error('加载收藏状态失败:', error)
+      console.error('Failed to load favorite status:', error)
     }
   }
 
@@ -122,57 +115,53 @@ export function SkinDetail() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      message.success('下载成功')
+      message.success(t('detail.downloadSuccess'))
     } catch (error) {
-      message.error('下载失败')
+      message.error(t('detail.downloadFailed'))
     }
   }
 
   const handleFavorite = async () => {
     if (!isAuthenticated || !token) {
-      message.info('请先登录后再收藏')
+      message.info(t('detail.loginToFavorite'))
       return
     }
 
-    // 发布者无法移除收藏
     if (isUploader) {
-      message.info('您是此皮肤的发布者，无需操作')
+      message.info(t('detail.uploaderNoActionSkin'))
       return
     }
 
     try {
       if (isFavoritedByUser) {
-        // 取消收藏
         const res = await fetch(`/api/skins/${skinId}/favorite`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!res.ok) {
           const err = await res.json()
-          throw new Error(err.errorMessage || '取消收藏失败')
+          throw new Error(err.errorMessage || t('detail.unfavoriteFailed'))
         }
         setIsFavoritedByUser(false)
         setFavoriteCount(c => Math.max(0, c - 1))
-        message.success('已取消收藏')
+        message.success(t('detail.unfavorited'))
       } else {
-        // 添加收藏
         const res = await fetch(`/api/skins/${skinId}/favorite`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!res.ok) {
           const err = await res.json()
-          throw new Error(err.errorMessage || '收藏失败')
+          throw new Error(err.errorMessage || t('detail.favoriteFailed'))
         }
         setIsFavoritedByUser(true)
         setFavoriteCount(c => c + 1)
-        message.success('已收藏，可在衣柜中查看')
+        message.success(t('detail.favoritedSuccess'))
       }
 
-      // 重新获取最新收藏数
       loadFavoriteStatus()
     } catch (error: any) {
-      message.error(error.message || '操作失败')
+      message.error(error.message || t('detail.operationFailed'))
     }
   }
 
@@ -184,11 +173,11 @@ export function SkinDetail() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ warning: warningText.trim() })
       })
-      if (!res.ok) throw new Error('添加失败')
+      if (!res.ok) throw new Error(t('detail.addFailed'))
       setSkin(prev => prev ? { ...prev, admin_warning: warningText.trim(), warning_set_by_level: user?.level } : null)
-      message.success('已添加警告')
+      message.success(t('detail.warningAdded'))
     } catch (e: any) {
-      message.error(e.message || '操作失败')
+      message.error(e.message || t('detail.operationFailed'))
     } finally {
       setWarningModalVisible(false)
     }
@@ -203,11 +192,10 @@ export function SkinDetail() {
   }
 
   if (!skin) {
-    return <div>皮肤不存在</div>
+    return <div>{t('detail.skinNotFound')}</div>
   }
 
   const canDownload = skin.permission_level === 'public_downloadable'
-  // 显示"已收藏"：发布者 或 已收藏
   const isShownAsFavorited = isUploader || isFavoritedByUser
 
   return (
@@ -218,7 +206,7 @@ export function SkinDetail() {
         onClick={handleBack}
         style={{ marginBottom: 20 }}
       >
-        返回材质库
+        {t('detail.backToLibrary')}
       </Button>
 
       <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap' }}>
@@ -226,6 +214,7 @@ export function SkinDetail() {
         <div style={{ flex: '0 0 auto' }}>
           <Skin3DViewer
             skinUrl={skin.file_path}
+            capeUrl={skin.cape_file_path}
             modelType={skin.model_type}
             width={350}
             height={400}
@@ -235,7 +224,7 @@ export function SkinDetail() {
         {/* 右侧：皮肤详情 */}
         <div style={{ flex: 1, minWidth: 300 }}>
           <h2 style={{ marginBottom: 12 }}>
-            {skin.name || '未命名皮肤'}
+            {skin.name || t('wardrobe.unnamedSkin')}
           </h2>
 
           {/* 标签 */}
@@ -256,9 +245,9 @@ export function SkinDetail() {
               icon={isShownAsFavorited ? <HeartFilled /> : <HeartOutlined />}
               onClick={handleFavorite}
               disabled={isUploader}
-              title={isUploader ? '发布者默认收藏' : undefined}
+              title={isUploader ? t('detail.uploaderDefaultFav') : undefined}
             >
-              {isUploader ? '已收藏' : isFavoritedByUser ? '已收藏' : '收藏'}
+              {isUploader ? t('detail.favorited') : isFavoritedByUser ? t('detail.favorited') : t('detail.favorite')}
             </Button>
             {canDownload && (
               <Button
@@ -266,7 +255,7 @@ export function SkinDetail() {
                 icon={<DownloadOutlined />}
                 onClick={handleDownload}
               >
-                下载
+                {t('detail.download')}
               </Button>
             )}
           </Space>
@@ -275,15 +264,15 @@ export function SkinDetail() {
           <div style={{ marginBottom: 16, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <Text type="secondary">
               <HeartOutlined style={{ marginRight: 4 }} />
-              收藏 {favoriteCount}
+              {t('detail.favoriteCount', { count: favoriteCount })}
             </Text>
             <Text type="secondary">
               <DownloadOutlined style={{ marginRight: 4 }} />
-              下载 {skin.download_count}
+              {t('detail.downloadCount', { count: skin.download_count })}
             </Text>
             <Text type="secondary">
               <StarOutlined style={{ marginRight: 4 }} />
-              浏览 {skin.view_count}
+              {t('detail.viewCount', { count: skin.view_count })}
             </Text>
           </div>
 
@@ -291,95 +280,95 @@ export function SkinDetail() {
 
           {/* 详细信息表格 */}
           <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="上传者">
+            <Descriptions.Item label={t('detail.uploader')}>
               {skin.uploader_name || `UID.${skin.user_uid}`}
-              {isUploader && <Tag color="purple" style={{ marginLeft: 8 }}>我发布的</Tag>}
+              {isUploader && <Tag color="purple" style={{ marginLeft: 8 }}>{t('detail.myUpload')}</Tag>}
             </Descriptions.Item>
-            <Descriptions.Item label="模型类型">
-              {skin.model_type === 'default' ? '经典' : '纤细'}
+            <Descriptions.Item label={t('detail.modelType')}>
+              {skin.model_type === 'default' ? t('wardrobe.classic') : t('wardrobe.slim')}
             </Descriptions.Item>
-            <Descriptions.Item label="协议类型">
+            <Descriptions.Item label={t('detail.licenseType')}>
               <Tag color={LICENSE_TAG_COLORS[skin.license_type]}>
                 {skin.license_type}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="权限级别">
-              {skin.permission_level === 'private' && '私有'}
-              {skin.permission_level === 'public_no_download' && '公开不可下载'}
-              {skin.permission_level === 'public_downloadable' && '公开可下载'}
+            <Descriptions.Item label={t('detail.permissionLevel')}>
+              {skin.permission_level === 'private' && t('detail.private')}
+              {skin.permission_level === 'public_no_download' && t('detail.publicNoDownload')}
+              {skin.permission_level === 'public_downloadable' && t('detail.publicDownloadable')}
             </Descriptions.Item>
-            <Descriptions.Item label="审核状态">
-              {skin.approval_status === 'pending' && <Tag color="orange">待审核</Tag>}
-              {skin.approval_status === 'approved' && <Tag color="green">已通过</Tag>}
-              {skin.approval_status === 'rejected' && <Tag color="red">已拒绝</Tag>}
+            <Descriptions.Item label={t('detail.approvalStatus')}>
+              {skin.approval_status === 'pending' && <Tag color="orange">{t('detail.pending')}</Tag>}
+              {skin.approval_status === 'approved' && <Tag color="green">{t('detail.approved')}</Tag>}
+              {skin.approval_status === 'rejected' && <Tag color="red">{t('detail.rejected')}</Tag>}
             </Descriptions.Item>
           </Descriptions>
 
           {/* 管理员操作区 + 红色警告 */}
-      {user && user.level >= 1 && (
-        <Card size="small" style={{ marginTop: 16, border: '1px solid #d9d9d9' }}>
-          <div style={{ marginBottom: 8 }}><b>管理员操作</b></div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span>AI 生成标记：</span>
-            <Switch
-              checked={!!skin.is_ai_generated}
-              onChange={async (checked) => {
-                try {
-                  const res = await fetch(`/api/admin/skins/${skin.id}/ai-generated`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ is_ai_generated: checked })
-                  });
-                  if (!res.ok) throw new Error('操作失败');
-                  setSkin({ ...skin, is_ai_generated: checked ? 1 : 0 });
-                  message.success(checked ? '已标记为 AI 生成' : '已取消 AI 标记');
-                } catch (e: any) {
-                  message.error(e.message || '操作失败');
-                }
-              }}
-            />
-            {user.level >= 2 && (
-              <>
-                {skin.admin_warning ? (
-                  <Button size="small" danger onClick={async () => {
+          {user && user.level >= 1 && (
+            <Card size="small" style={{ marginTop: 16, border: '1px solid #d9d9d9' }}>
+              <div style={{ marginBottom: 8 }}><b>{t('detail.adminActions')}</b></div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span>{t('detail.aiGeneratedMark')}</span>
+                <Switch
+                  checked={!!skin.is_ai_generated}
+                  onChange={async (checked) => {
                     try {
-                      const res = await fetch(`/api/admin/skins/${skin.id}/warning`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` }
+                      const res = await fetch(`/api/admin/skins/${skin.id}/ai-generated`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ is_ai_generated: checked })
                       });
-                      if (!res.ok) throw new Error('移除失败');
-                      setSkin({ ...skin, admin_warning: null, warning_set_by_level: null });
-                      message.success('已移除警告');
+                      if (!res.ok) throw new Error(t('detail.operationFailed'));
+                      setSkin({ ...skin, is_ai_generated: checked ? 1 : 0 });
+                      message.success(checked ? t('detail.markedAsAi') : t('detail.unmarkedAsAi'));
                     } catch (e: any) {
-                      message.error(e.message || '操作失败');
+                      message.error(e.message || t('detail.operationFailed'));
                     }
-                  }}>移除警告</Button>
-                ) : (
-                  <Button size="small" danger onClick={() => {
-                    setWarningText('');
-                    setWarningModalVisible(true);
-                  }}>添加警告</Button>
+                  }}
+                />
+                {user.level >= 2 && (
+                  <>
+                    {skin.admin_warning ? (
+                      <Button size="small" danger onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/admin/skins/${skin.id}/warning`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (!res.ok) throw new Error(t('detail.removeFailed'));
+                          setSkin({ ...skin, admin_warning: null, warning_set_by_level: null });
+                          message.success(t('detail.warningRemoved'));
+                        } catch (e: any) {
+                          message.error(e.message || t('detail.operationFailed'));
+                        }
+                      }}>{t('detail.removeWarning')}</Button>
+                    ) : (
+                      <Button size="small" danger onClick={() => {
+                        setWarningText('');
+                        setWarningModalVisible(true);
+                      }}>{t('detail.addWarning')}</Button>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </div>
-        </Card>
-      )}
+              </div>
+            </Card>
+          )}
 
-      {/* 红色警告 */}
-      {skin.admin_warning && (
-        <Alert
-          type="error"
-          showIcon
-          message="管理员警告"
-          description={skin.admin_warning}
-          style={{ marginTop: 16 }}
-        />
-      )}
+          {/* 红色警告 */}
+          {skin.admin_warning && (
+            <Alert
+              type="error"
+              showIcon
+              message={t('detail.adminWarning')}
+              description={skin.admin_warning}
+              style={{ marginTop: 16 }}
+            />
+          )}
 
           {/* 简介卡片 */}
           {skin.description && (
-            <Card size="small" style={{ marginTop: 16 }} title="描述">
+            <Card size="small" style={{ marginTop: 16 }} title={t('detail.description')}>
               <Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{skin.description}</Paragraph>
             </Card>
           )}
@@ -387,17 +376,17 @@ export function SkinDetail() {
       </div>
 
       <Modal
-        title="添加管理员警告"
+        title={t('detail.addAdminWarning')}
         open={warningModalVisible}
         onOk={handleAddWarning}
         onCancel={() => setWarningModalVisible(false)}
-        okText="确认添加"
-        cancelText="取消"
+        okText={t('app.confirm')}
+        cancelText={t('app.cancel')}
         destroyOnClose
       >
         <Input.TextArea
           rows={4}
-          placeholder="输入警告内容..."
+          placeholder={t('detail.warningPlaceholder')}
           value={warningText}
           onChange={e => setWarningText(e.target.value)}
         />

@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import { createClient, RedisClientType } from 'redis';
 import { Pool } from 'pg';
 import * as path from 'path';
+import { t, getLang } from '../../utils/setupI18n';
 
 const router = Router();
 
@@ -25,10 +26,11 @@ router.get('/status', async (_req: Request, res: Response) => {
  * 测试数据库连接（支持 SQLite / PostgreSQL）
  */
 router.post('/test-db', async (req: Request, res: Response) => {
+  const lang = getLang(req);
   try {
     const isSetup = await SetupService.isSetupCompleted();
     if (isSetup) {
-      return res.status(403).json({ success: false, message: '系统已初始化，此端点不可用' });
+      return res.status(403).json({ success: false, message: t('systemAlreadyInitialized', lang) });
     }
 
     const { db_type, db_host, db_port, db_name, db_user, db_password } = req.body;
@@ -46,15 +48,15 @@ router.post('/test-db', async (req: Request, res: Response) => {
         const testFile = path.join(dbDir, '.write_test');
         fs.writeFileSync(testFile, 'ok');
         fs.unlinkSync(testFile);
-        return res.json({ success: true, message: 'SQLite 路径可写，连接正常' });
+        return res.json({ success: true, message: t('sqliteWritable', lang) });
       } catch (e: any) {
-        return res.status(400).json({ success: false, message: `SQLite 路径测试失败: ${e.message}` });
+        return res.status(400).json({ success: false, message: t('sqliteTestFailed', lang, { detail: e.message }) });
       }
     }
 
     if (db_type === 'postgresql') {
       if (!db_host || !db_name || !db_user) {
-        return res.status(400).json({ success: false, message: 'PostgreSQL 连接信息不完整' });
+        return res.status(400).json({ success: false, message: t('pgInfoIncomplete', lang) });
       }
 
       const testPool = new Pool({
@@ -72,21 +74,21 @@ router.post('/test-db', async (req: Request, res: Response) => {
         await client.query('SELECT 1');
         client.release();
         await testPool.end();
-        return res.json({ success: true, message: 'PostgreSQL 连接成功' });
+        return res.json({ success: true, message: t('pgConnectSuccess', lang) });
       } catch (e: any) {
         await testPool.end();
-        let msg = e.message || '连接失败';
-        if (e.code === 'ECONNREFUSED') msg = '无法连接到数据库服务器，请检查主机和端口';
-        if (e.code === '28P01') msg = '认证失败，请检查用户名和密码';
-        if (e.code === '3D000') msg = '数据库不存在';
+        let msg = e.message || t('pgConnectFailed', lang);
+        if (e.code === 'ECONNREFUSED') msg = t('pgConnRefused', lang);
+        if (e.code === '28P01') msg = t('pgAuthFailed', lang);
+        if (e.code === '3D000') msg = t('pgDbNotExist', lang);
         return res.status(400).json({ success: false, message: msg });
       }
     }
 
-    return res.status(400).json({ success: false, message: '不支持的数据库类型' });
+    return res.status(400).json({ success: false, message: t('dbTypeNotSupported', lang) });
   } catch (error: any) {
     console.error('[Setup] 测试数据库失败:', error);
-    res.status(500).json({ success: false, message: error.message || '测试失败' });
+    res.status(500).json({ success: false, message: error.message || t('testFailed', lang) });
   }
 });
 
@@ -95,16 +97,17 @@ router.post('/test-db', async (req: Request, res: Response) => {
  * 测试邮件 SMTP 连接
  */
 router.post('/test-email', async (req: Request, res: Response) => {
+  const lang = getLang(req);
   try {
     const isSetup = await SetupService.isSetupCompleted();
     if (isSetup) {
-      return res.status(403).json({ success: false, message: '系统已初始化，此端点不可用' });
+      return res.status(403).json({ success: false, message: t('systemAlreadyInitialized', lang) });
     }
 
     const { mail_host, mail_port, mail_user, mail_pass } = req.body;
 
     if (!mail_host || !mail_user || !mail_pass) {
-      return res.status(400).json({ success: false, message: '邮箱配置不完整' });
+      return res.status(400).json({ success: false, message: t('mailConfigIncomplete', lang) });
     }
 
     const transporter = nodemailer.createTransport({
@@ -121,17 +124,17 @@ router.post('/test-email', async (req: Request, res: Response) => {
 
     try {
       await transporter.verify();
-      return res.json({ success: true, message: 'SMTP 连接验证成功' });
+      return res.json({ success: true, message: t('smtpVerifySuccess', lang) });
     } catch (e: any) {
-      let msg = e.message || 'SMTP 验证失败';
-      if (e.code === 'EAUTH') msg = 'SMTP 认证失败，请检查用户名和授权码';
-      if (e.code === 'ESOCKET') msg = '无法连接 SMTP 服务器，请检查服务器地址和端口';
-      if (e.code === 'ETIMEDOUT') msg = '连接 SMTP 服务器超时';
+      let msg = e.message || t('smtpVerifyFailed', lang);
+      if (e.code === 'EAUTH') msg = t('smtpAuthFailed', lang);
+      if (e.code === 'ESOCKET') msg = t('smtpConnFailed', lang);
+      if (e.code === 'ETIMEDOUT') msg = t('smtpTimeout', lang);
       return res.status(400).json({ success: false, message: msg });
     }
   } catch (error: any) {
     console.error('[Setup] 测试邮件失败:', error);
-    res.status(500).json({ success: false, message: error.message || '测试失败' });
+    res.status(500).json({ success: false, message: error.message || t('testFailed', lang) });
   }
 });
 
@@ -140,10 +143,11 @@ router.post('/test-email', async (req: Request, res: Response) => {
  * 测试 Redis 连接
  */
 router.post('/test-redis', async (req: Request, res: Response) => {
+  const lang = getLang(req);
   try {
     const isSetup = await SetupService.isSetupCompleted();
     if (isSetup) {
-      return res.status(403).json({ success: false, message: '系统已初始化，此端点不可用' });
+      return res.status(403).json({ success: false, message: t('systemAlreadyInitialized', lang) });
     }
 
     const { redis_host, redis_port, redis_password } = req.body;
@@ -161,16 +165,16 @@ router.post('/test-redis', async (req: Request, res: Response) => {
       await client.connect();
       await client.ping();
       await client.quit();
-      return res.json({ success: true, message: 'Redis 连接成功' });
+      return res.json({ success: true, message: t('redisConnectSuccess', lang) });
     } catch (e: any) {
-      let msg = e.message || 'Redis 连接失败';
-      if (e.code === 'ECONNREFUSED') msg = '无法连接到 Redis 服务器，请检查主机和端口';
-      if (e.code === 'ERR_UNKNOWN') msg = 'Redis 认证失败，请检查密码';
+      let msg = e.message || t('redisConnectFailed', lang);
+      if (e.code === 'ECONNREFUSED') msg = t('redisConnRefused', lang);
+      if (e.code === 'ERR_UNKNOWN') msg = t('redisAuthFailed', lang);
       return res.status(400).json({ success: false, message: msg });
     }
   } catch (error: any) {
     console.error('[Setup] 测试 Redis 失败:', error);
-    res.status(500).json({ success: false, message: error.message || '测试失败' });
+    res.status(500).json({ success: false, message: error.message || t('testFailed', lang) });
   }
 });
 
@@ -183,6 +187,7 @@ router.post('/test-redis', async (req: Request, res: Response) => {
  *       admin_username, admin_email, admin_password
  */
 router.post('/complete', async (req: Request, res: Response) => {
+  const lang = getLang(req);
   try {
     const {
       site_name,
@@ -208,24 +213,24 @@ router.post('/complete', async (req: Request, res: Response) => {
 
     // 验证必填
     if (!admin_email || !admin_password) {
-      return res.status(400).json({ success: false, message: '邮箱和密码不能为空' });
+      return res.status(400).json({ success: false, message: t('emailPasswordRequired', lang) });
     }
     if (admin_password.length < 6) {
-      return res.status(400).json({ success: false, message: '密码至少需要6位' });
+      return res.status(400).json({ success: false, message: t('passwordTooShort', lang) });
     }
     if (db_type === 'postgresql') {
       if (!db_host || !db_name || !db_user || !db_password) {
-        return res.status(400).json({ success: false, message: 'PostgreSQL 连接信息不完整' });
+        return res.status(400).json({ success: false, message: t('pgInfoIncomplete', lang) });
       }
     }
     if (!mail_host || !mail_user || !mail_pass || !mail_from) {
-      return res.status(400).json({ success: false, message: '邮箱配置不完整' });
+      return res.status(400).json({ success: false, message: t('mailConfigIncomplete', lang) });
     }
 
     // 检查是否已安装
     const isSetup = await SetupService.isSetupCompleted();
     if (isSetup) {
-      return res.status(403).json({ success: false, message: '系统已初始化，无法重复安装' });
+      return res.status(403).json({ success: false, message: t('systemAlreadySetup', lang) });
     }
 
     const result = await SetupService.completeSetup({
@@ -252,7 +257,7 @@ router.post('/complete', async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: '安装完成！',
+      message: t('setupComplete', lang),
       user: {
         user_uid: result.user.user_uid,
         email: result.user.email,
@@ -263,7 +268,7 @@ router.post('/complete', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('[Setup] 安装失败:', error);
-    res.status(500).json({ success: false, message: error.message || '安装失败' });
+    res.status(500).json({ success: false, message: error.message || t('installFailed', lang) });
   }
 });
 

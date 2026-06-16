@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Table, Tag, Button, Space, message, Modal, Descriptions } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuthStore } from '../../store/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface Cape {
   id: string
@@ -17,6 +18,7 @@ interface Cape {
 }
 
 function CapeApproval() {
+  const { t } = useTranslation()
   const [capes, setCapes] = useState<Cape[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCape, setSelectedCape] = useState<Cape | null>(null)
@@ -37,13 +39,13 @@ function CapeApproval() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `请求失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.requestFailedWithStatus', { status: response.status }))
       }
       const data = await response.json()
       setCapes(data)
     } catch (error: any) {
-      message.error(`加载披风列表失败: ${error.message}`)
-      console.error('加载披风列表失败:', error)
+      message.error(t('admin.loadCapesFailed', { message: error.message }))
+      console.error(t('admin.loadCapesFailed'), error)
     } finally {
       setLoading(false)
     }
@@ -59,20 +61,20 @@ function CapeApproval() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
       }
-      message.success('审核通过')
+      message.success(t('admin.approved'))
       loadPendingCapes()
     } catch (error: any) {
-      message.error(`操作失败: ${error.message}`)
-      console.error('审核披风失败:', error)
+      message.error(t('common.operationFailed', { message: error.message }))
+      console.error(t('admin.approveCapeFailed'), error)
     }
   }
 
   const handleReject = (capeId: string) => {
     Modal.confirm({
-      title: '拒绝披风',
-      content: '确定要拒绝这个披风吗？',
+      title: t('admin.rejectCape'),
+      content: t('admin.confirmRejectCape'),
       onOk: async () => {
         try {
           const response = await fetch(`/api/admin/capes/${capeId}/reject`, {
@@ -83,13 +85,13 @@ function CapeApproval() {
           })
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+            throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
           }
-          message.success('已拒绝')
+          message.success(t('admin.rejected'))
           loadPendingCapes()
         } catch (error: any) {
-          message.error(`操作失败: ${error.message}`)
-          console.error('拒绝披风失败:', error)
+          message.error(t('common.operationFailed', { message: error.message }))
+          console.error(t('admin.rejectCapeFailed'), error)
         }
       },
     })
@@ -102,27 +104,27 @@ function CapeApproval() {
 
   const columns: ColumnsType<Cape> = [
     {
-      title: 'ID',
+      title: t('admin.id'),
       dataIndex: 'id',
       key: 'id',
       width: 80,
     },
     {
-      title: '上传者',
+      title: t('admin.uploader'),
       dataIndex: 'uploader_name',
       key: 'uploader_name',
       width: 100,
       render: (name: string | undefined, record: Cape) => name || `UID${record.user_uid}`,
     },
     {
-      title: '名称',
+      title: t('admin.name'),
       dataIndex: 'name',
       key: 'name',
       width: 120,
       render: (name: string) => name || '-',
     },
     {
-      title: '预览',
+      title: t('admin.preview'),
       key: 'preview',
       width: 70,
       render: (_, record: Cape) => (
@@ -135,28 +137,28 @@ function CapeApproval() {
       ),
     },
     {
-      title: '协议',
+      title: t('admin.license'),
       dataIndex: 'license_type',
       key: 'license_type',
       width: 120,
       render: (type: string) => <Tag>{type}</Tag>,
     },
     {
-      title: '权限',
+      title: t('admin.permission'),
       dataIndex: 'permission_level',
       key: 'permission_level',
       width: 120,
       render: (level: string) => {
         const map: Record<string, string> = {
-          private: '私有',
-          public_no_download: '公开不可下载',
-          public_downloadable: '公开可下载',
+          private: t('admin.private'),
+          public_no_download: t('admin.publicNoDownload'),
+          public_downloadable: t('admin.publicDownloadable'),
         }
         return map[level] || level
       },
     },
     {
-      title: '状态',
+      title: t('admin.status'),
       dataIndex: 'approval_status',
       key: 'approval_status',
       width: 100,
@@ -167,28 +169,28 @@ function CapeApproval() {
           rejected: 'red',
         }
         const textMap: Record<string, string> = {
-          pending: '待审核',
-          approved: '已通过',
-          rejected: '已拒绝',
+          pending: t('admin.pending'),
+          approved: t('admin.approved'),
+          rejected: t('admin.rejected'),
         }
         return <Tag color={colorMap[status]}>{textMap[status]}</Tag>
       },
     },
     {
-      title: '上传时间',
+      title: t('admin.uploadTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 200,
       render: (_, record: Cape) => (
         <Space>
           <Button type="link" onClick={() => handleViewDetail(record)}>
-            查看
+            {t('common.view')}
           </Button>
           {record.approval_status === 'pending' && (
             <>
@@ -197,7 +199,7 @@ function CapeApproval() {
                 size="small"
                 onClick={() => handleApprove(record.id)}
               >
-                通过
+                {t('admin.approve')}
               </Button>
               <Button
                 type="primary"
@@ -205,7 +207,7 @@ function CapeApproval() {
                 size="small"
                 onClick={() => handleReject(record.id)}
               >
-                拒绝
+                {t('admin.reject')}
               </Button>
             </>
           )}
@@ -216,18 +218,18 @@ function CapeApproval() {
 
   return (
     <div>
-      <h2>披风审核</h2>
+      <h2>{t('admin.capeApproval')}</h2>
       <Table
         columns={columns}
         dataSource={capes}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 个` }}
+        pagination={{ pageSize: 10, showTotal: (total) => t('common.totalItems', { total }) }}
         size="small"
       />
 
       <Modal
-        title="披风详情"
+        title={t('admin.capeDetail')}
         open={detailVisible}
         onCancel={() => setDetailVisible(false)}
         footer={null}
@@ -243,24 +245,24 @@ function CapeApproval() {
               />
             </div>
             <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="ID">{selectedCape.id}</Descriptions.Item>
-              <Descriptions.Item label="上传者">{selectedCape.uploader_name || `UID${selectedCape.user_uid}`}</Descriptions.Item>
-              <Descriptions.Item label="名称">{selectedCape.name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="描述">{selectedCape.description || '-'}</Descriptions.Item>
-              <Descriptions.Item label="协议">
+              <Descriptions.Item label={t('admin.id')}>{selectedCape.id}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.uploader')}>{selectedCape.uploader_name || `UID${selectedCape.user_uid}`}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.name')}>{selectedCape.name || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.description')}>{selectedCape.description || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('admin.license')}>
                 <Tag>{selectedCape.license_type}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="权限级别">
-                {selectedCape.permission_level === 'private' && '私有'}
-                {selectedCape.permission_level === 'public_no_download' && '公开不可下载'}
-                {selectedCape.permission_level === 'public_downloadable' && '公开可下载'}
+              <Descriptions.Item label={t('admin.permissionLevel')}>
+                {selectedCape.permission_level === 'private' && t('admin.private')}
+                {selectedCape.permission_level === 'public_no_download' && t('admin.publicNoDownload')}
+                {selectedCape.permission_level === 'public_downloadable' && t('admin.publicDownloadable')}
               </Descriptions.Item>
-              <Descriptions.Item label="审核状态">
-                {selectedCape.approval_status === 'pending' && <Tag color="orange">待审核</Tag>}
-                {selectedCape.approval_status === 'approved' && <Tag color="green">已通过</Tag>}
-                {selectedCape.approval_status === 'rejected' && <Tag color="red">已拒绝</Tag>}
+              <Descriptions.Item label={t('admin.approvalStatus')}>
+                {selectedCape.approval_status === 'pending' && <Tag color="orange">{t('admin.pending')}</Tag>}
+                {selectedCape.approval_status === 'approved' && <Tag color="green">{t('admin.approved')}</Tag>}
+                {selectedCape.approval_status === 'rejected' && <Tag color="red">{t('admin.rejected')}</Tag>}
               </Descriptions.Item>
-              <Descriptions.Item label="上传时间">
+              <Descriptions.Item label={t('admin.uploadTime')}>
                 {new Date(selectedCape.created_at).toLocaleString()}
               </Descriptions.Item>
             </Descriptions>

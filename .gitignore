@@ -23,6 +23,9 @@ data/*.db-journal
 data/*.db-wal
 data/*.db-shm
 
+# Database backups (auto-created before migrations, not tracked by git)
+data/backups/
+
 # Uploads
 uploads/skins/*
 uploads/capes/*

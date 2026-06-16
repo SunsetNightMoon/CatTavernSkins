@@ -315,6 +315,12 @@
   color: #fff !important;
 }
 
+body:not([data-theme="light"]) .ant-btn-primary[disabled] {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(74, 158, 255, 0.25) !important;
+  border-color: rgba(74, 158, 255, 0.35) !important;
+}
+
 /* Tag */
 .ant-tag {
   border-color: rgba(255, 255, 255, 0.15);
@@ -547,13 +553,67 @@
 }
 
 /* Select */
-.ant-select:not(.ant-select-customize-input) .ant-select-selector {
+body:not([data-theme="light"]) .ant-select:not(.ant-select-customize-input) .ant-select-selector {
   background: rgba(255, 255, 255, 0.08) !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
   color: #fff !important;
 }
 
-.ant-select-arrow {
+body:not([data-theme="light"]) .ant-select-selection-item {
+  color: #fff !important;
+}
+
+body:not([data-theme="light"]) .ant-select-selection-placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+body:not([data-theme="light"]) .ant-select-arrow {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Upload (dark only) */
+body:not([data-theme="light"]) .ant-upload-list-item-name {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+body:not([data-theme="light"]) .ant-upload-list-item-card-actions .anticon {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+body:not([data-theme="light"]) .ant-upload-list-item-card-actions .anticon:hover {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+body:not([data-theme="light"]) .ant-upload-list-item:hover .ant-upload-list-item-name {
+  color: #fff !important;
+}
+
+/* Select dropdown (dark) — portal elements need body-level scoping */
+body:not([data-theme="light"]) .ant-select-dropdown {
+  background: #1a2a42 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+body:not([data-theme="light"]) .ant-select-item {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+body:not([data-theme="light"]) .ant-select-item-option-selected {
+  background: rgba(74, 158, 255, 0.2) !important;
+  color: #fff !important;
+  font-weight: 500;
+}
+
+body:not([data-theme="light"]) .ant-select-item-option-active {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body:not([data-theme="light"]) .ant-select-item-option-selected.ant-select-item-option-active {
+  background: rgba(74, 158, 255, 0.25) !important;
+}
+
+body:not([data-theme="light"]) .ant-select-dropdown-empty {
   color: rgba(255, 255, 255, 0.4) !important;
 }
 

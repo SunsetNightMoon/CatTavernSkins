@@ -12,6 +12,7 @@ import type { MenuProps } from 'antd'
 import { useAuthStore } from '../../store/authStore'
 import { useSiteStore } from '../../store/siteStore'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { useTranslation } from 'react-i18next'
 import UserManagement from './UserManagement'
 import SkinApproval from './SkinApproval'
 import CapeApproval from './CapeApproval'
@@ -36,7 +37,8 @@ const { Sider, Content } = Layout
 interface AdminDashboardProps {}
 
 export function AdminDashboard(_props: AdminDashboardProps) {
-  usePageTitle('管理面板')
+  const { t } = useTranslation()
+  usePageTitle(t('nav.admin'))
   const { user } = useAuthStore()
   
   // 从 localStorage 读取上次的活动标签页，默认 'dashboard'
@@ -58,7 +60,7 @@ export function AdminDashboard(_props: AdminDashboardProps) {
   }, [activeTab])
 
   if (!user || user.level < 1) {
-    return <div>权限不足</div>
+    return <div>{t('admin.noPermission')}</div>
   }
 
   const isSuperAdmin = user.level >= 2
@@ -67,47 +69,47 @@ export function AdminDashboard(_props: AdminDashboardProps) {
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: '仪表盘',
+      label: t('admin.dashboard'),
     },
     {
       key: 'users',
       icon: <UserOutlined />,
-      label: '用户管理',
+      label: t('admin.userManagement'),
       // level >= 1 可用（管理员以上）
     },
     {
       key: 'skins',
       icon: <SkinOutlined />,
-      label: '皮肤审核',
+      label: t('admin.skinApproval'),
       // level >= 1 可用
     },
     {
       key: 'capes',
       icon: <SkinOutlined />,
-      label: '披风审核',
+      label: t('admin.capeApproval'),
       // level >= 1 可用
     },
     {
       key: 'skin-management',
       icon: <AppstoreOutlined />,
-      label: '皮肤管理',
+      label: t('admin.skinManagement'),
       // level >= 1 可用（管理员可管理所有皮肤）
     },
     {
       key: 'cape-management',
       icon: <AppstoreOutlined />,
-      label: '披风管理',
+      label: t('admin.capeManagement'),
       // level >= 1 可用（管理员可管理所有披风）
     },
     ...(isSuperAdmin ? [{
       key: 'blacklist',
       icon: <BlockOutlined />,
-      label: '黑名单管理',
+      label: t('admin.blacklist'),
     }] : []),
     ...(isSuperAdmin ? [{
       key: 'settings',
       icon: <SettingOutlined />,
-      label: '系统设置',
+      label: t('admin.systemSettings'),
     }] : []),
   ]
 
@@ -162,6 +164,7 @@ export function AdminDashboard(_props: AdminDashboardProps) {
 
 // 仪表盘组件
 function DashboardContent() {
+  const { t } = useTranslation()
   const theme = useSiteStore((s) => s.theme)
   const isDark = theme === 'dark'
 
@@ -204,12 +207,12 @@ function DashboardContent() {
           'Authorization': `Bearer ${token}`,
         },
       })
-      if (!response.ok) throw new Error('请求失败')
+      if (!response.ok) throw new Error(t('common.requestFailed'))
       const data = await response.json()
       setStats(data)
     } catch (error) {
-      message.error('加载统计数据失败')
-      console.error('加载统计数据失败:', error)
+      message.error(t('admin.loadStatsFailed'))
+      console.error(t('admin.loadStatsFailed') + ':', error)
     } finally {
       setLoading(false)
     }
@@ -223,12 +226,12 @@ function DashboardContent() {
           'Authorization': `Bearer ${token}`,
         },
       })
-      if (!response.ok) throw new Error('请求失败')
+      if (!response.ok) throw new Error(t('common.requestFailed'))
       const data = await response.json()
       setDailyStats(data)
     } catch (error) {
-      message.error('加载趋势数据失败')
-      console.error('加载趋势数据失败:', error)
+      message.error(t('admin.loadTrendFailed'))
+      console.error(t('admin.loadTrendFailed') + ':', error)
     } finally {
       setChartsLoading(false)
     }
@@ -247,14 +250,14 @@ function DashboardContent() {
 
   return (
     <div>
-      <h2>仪表盘</h2>
+      <h2>{t('admin.dashboard')}</h2>
 
       {/* 统计卡片 */}
       <Row gutter={20} style={{ marginTop: 20 }}>
         <Col span={8}>
           <Card>
             <Statistic
-              title="用户总数"
+              title={t('admin.userCount')}
               value={stats.userCount}
               loading={loading}
               valueStyle={{ color: '#3f8600' }}
@@ -264,7 +267,7 @@ function DashboardContent() {
         <Col span={8}>
           <Card>
             <Statistic
-              title="皮肤总数"
+              title={t('admin.skinCount')}
               value={stats.skinCount}
               loading={loading}
               valueStyle={{ color: '#1890ff' }}
@@ -274,7 +277,7 @@ function DashboardContent() {
         <Col span={8}>
           <Card>
             <Statistic
-              title="待审核"
+              title={t('admin.pendingCount')}
               value={stats.pendingCount}
               loading={loading}
               valueStyle={{ color: '#faad14' }}
@@ -286,7 +289,7 @@ function DashboardContent() {
       {/* 折线图区域 */}
       <Spin spinning={chartsLoading}>
         {/* 投稿趋势：皮肤 + 披风 */}
-        <Card title="投稿趋势（近7天）" style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
+        <Card title={t('admin.uploadTrend')} style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -303,7 +306,7 @@ function DashboardContent() {
               <Line
                 type="monotone"
                 dataKey="skinUploads"
-                name="皮肤投稿"
+                name={t('admin.skinUploads')}
                 stroke="#4a9eff"
                 strokeWidth={2}
                 dot={{ r: 4 }}
@@ -311,7 +314,7 @@ function DashboardContent() {
               <Line
                 type="monotone"
                 dataKey="capeUploads"
-                name="披风投稿"
+                name={t('admin.capeUploads')}
                 stroke="#a78bfa"
                 strokeWidth={2}
                 dot={{ r: 4 }}
@@ -321,7 +324,7 @@ function DashboardContent() {
         </Card>
 
         {/* 用户注册趋势 */}
-        <Card title="用户注册趋势（近7天）" style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
+        <Card title={t('admin.registrationTrend')} style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -338,7 +341,7 @@ function DashboardContent() {
               <Line
                 type="monotone"
                 dataKey="userRegistrations"
-                name="新注册用户"
+                name={t('admin.newUsers')}
                 stroke="#34d399"
                 strokeWidth={2}
                 dot={{ r: 4 }}
@@ -348,7 +351,7 @@ function DashboardContent() {
         </Card>
 
         {/* 待审核趋势 */}
-        <Card title="待审核新增趋势（近7天）" style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
+        <Card title={t('admin.pendingTrend')} style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -365,7 +368,7 @@ function DashboardContent() {
               <Line
                 type="monotone"
                 dataKey="pendingSubmissions"
-                name="待审核新增"
+                name={t('admin.pendingNew')}
                 stroke="#fbbf24"
                 strokeWidth={2}
                 dot={{ r: 4 }}
@@ -375,7 +378,7 @@ function DashboardContent() {
         </Card>
 
         {/* 封禁趋势 */}
-        <Card title="封禁趋势（近7天）" style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
+        <Card title={t('admin.banTrend')} style={{ marginTop: 20 }} headStyle={{ color: cardTitleColor }}>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -392,7 +395,7 @@ function DashboardContent() {
               <Line
                 type="monotone"
                 dataKey="banCounts"
-                name="新增封禁"
+                name={t('admin.newBans')}
                 stroke="#ff4d4f"
                 strokeWidth={2}
                 dot={{ r: 4 }}

@@ -1,5 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { LoginOutlined, SettingOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons'
+import { LoginOutlined, SettingOutlined, SunOutlined, MoonOutlined, GlobalOutlined } from '@ant-design/icons'
+import { Dropdown } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/authStore'
 import { useSiteStore } from '../../store/siteStore'
 import { SkinAvatar } from '../SkinAvatar'
@@ -17,9 +19,17 @@ interface TopNavProps {
   brandOnClick?: () => void
 }
 
+const LANG_ITEMS = [
+  { key: 'SCH', label: '简体中文' },
+  { key: 'TCH', label: '繁體中文' },
+  { key: 'EN', label: 'English' },
+  { key: 'JP', label: '日本語' },
+]
+
 export function TopNav({ links, brandOnClick }: TopNavProps) {
   const { isAuthenticated, user, skinUrl, profileName } = useAuthStore()
   const { title, description, theme, toggleTheme } = useSiteStore()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -63,37 +73,56 @@ export function TopNav({ links, brandOnClick }: TopNavProps) {
             to={link.path}
             className={`top-nav__link${isActive(link.path) ? ' top-nav__link--active' : ''}`}
           >
-            {link.label}
+            {t(link.label)}
           </Link>
         ))}
       </div>
 
-      {/* Right: Theme Toggle / User / Login */}
+      {/* Right: Lang / Theme Toggle / User / Login */}
       <div className="top-nav__right">
+        <Dropdown
+          placement="bottomRight"
+          overlayClassName="top-nav__lang-dropdown"
+          menu={{
+            items: LANG_ITEMS.map((item) => ({
+              key: item.key,
+              label: <span>{item.label}</span>,
+            })),
+            onClick: ({ key }) => {
+              i18n.changeLanguage(key)
+              window.localStorage.setItem('cattavern-language', key)
+            },
+            selectedKeys: [i18n.language || 'SCH'],
+          }}
+        >
+          <button className="top-nav__icon-btn" title={t('common.language')}>
+            <GlobalOutlined />
+          </button>
+        </Dropdown>
         <button
           className="top-nav__theme-btn"
           onClick={toggleTheme}
-          title={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'}
+          title={theme === 'dark' ? t('common.switchToLight') : t('common.switchToDark')}
         >
           {theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
         </button>
         {isAuthenticated ? (
           <>
             {user && user.level >= 1 && (
-              <button className="top-nav__icon-btn" onClick={() => navigate('/admin')} title="管理面板">
+              <button className="top-nav__icon-btn" onClick={() => navigate('/admin')} title={t('nav.admin')}>
                 <SettingOutlined />
               </button>
             )}
             <div
               className="top-nav__avatar"
               onClick={() => navigate('/profile')}
-              title={profileName || user?.email || '个人中心'}
+              title={profileName || user?.email || t('nav.profile')}
             >
               <SkinAvatar skinUrl={skinUrl || undefined} size={36} border={false} />
             </div>
           </>
         ) : (
-          <button className="top-nav__icon-btn" onClick={() => navigate('/login')} title="登录">
+          <button className="top-nav__icon-btn" onClick={() => navigate('/login')} title={t('nav.login')}>
             <LoginOutlined />
           </button>
         )}

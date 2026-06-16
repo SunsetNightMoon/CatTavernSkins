@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table'
 
 const { Text, Paragraph } = Typography
 import { useAuthStore } from '../../store/authStore'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 
 interface BlacklistRecord {
@@ -19,6 +20,7 @@ interface BlacklistRecord {
 }
 
 export default function BlacklistManagement() {
+  const { t } = useTranslation()
   const { token } = useAuthStore()
   const [blacklist, setBlacklist] = useState<BlacklistRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,7 +46,7 @@ export default function BlacklistManagement() {
           'Authorization': `Bearer ${token}`,
         },
       })
-      if (!response.ok) throw new Error('请求失败')
+      if (!response.ok) throw new Error(t('common.requestFailed'))
       const data = await response.json()
       setBlacklist(data)
 
@@ -60,8 +62,8 @@ export default function BlacklistManagement() {
 
       setStats({ permanent, temporary, expired })
     } catch (error) {
-      message.error('加载黑名单失败')
-      console.error('加载黑名单失败:', error)
+      message.error(t('admin.loadBlacklistFailed', { message: (error as Error).message || String(error) }))
+      console.error(t('admin.loadBlacklistFailed'), error)
     } finally {
       setLoading(false)
     }
@@ -98,15 +100,15 @@ export default function BlacklistManagement() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.errorMessage || '添加失败')
+        throw new Error(data.errorMessage || t('common.operationFailed'))
       }
 
-      message.success('已添加到黑名单')
+      message.success(t('admin.addedToBlacklist'))
       setAddModalOpen(false)
       addForm.resetFields()
       loadBlacklist()
     } catch (error: any) {
-      message.error(error.message || '添加失败')
+      message.error(error.message || t('common.operationFailed'))
     } finally {
       setAddModalLoading(false)
     }
@@ -123,13 +125,13 @@ export default function BlacklistManagement() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.errorMessage || '删除失败')
+        throw new Error(data.errorMessage || t('common.operationFailed'))
       }
 
-      message.success('已从黑名单移除')
+      message.success(t('admin.removedFromBlacklist'))
       loadBlacklist()
     } catch (error: any) {
-      message.error(error.message || '删除失败')
+      message.error(error.message || t('common.operationFailed'))
     }
   }
 
@@ -145,14 +147,14 @@ export default function BlacklistManagement() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.errorMessage || '清理失败')
+        throw new Error(data.errorMessage || t('common.operationFailed'))
       }
 
       const data = await response.json()
-      message.success(`已清理 ${data.deletedCount} 条过期记录`)
+      message.success(t('admin.cleanedExpired', { count: data.deletedCount }))
       loadBlacklist()
     } catch (error: any) {
-      message.error(error.message || '清理失败')
+      message.error(error.message || t('admin.cleanupFailed'))
     } finally {
       setCleaningExpired(false)
     }
@@ -160,12 +162,12 @@ export default function BlacklistManagement() {
 
   const getBanTypeTag = (banType: string, banUntil: string | null) => {
     if (banType === 'permanent') {
-      return <Tag color="red">永久封禁</Tag>
+      return <Tag color="red">{t('admin.permanentBan')}</Tag>
     } else {
       const isExpired = banUntil && new Date(banUntil) <= new Date()
       return (
         <Tag color={isExpired ? 'default' : 'orange'}>
-          临时封禁 {isExpired ? '(已过期)' : ''}
+          {t('admin.temporaryBan')} {isExpired ? t('admin.expired') : ''}
         </Tag>
       )
     }
@@ -173,74 +175,74 @@ export default function BlacklistManagement() {
 
   const columns: ColumnsType<BlacklistRecord> = [
     {
-      title: 'ID',
+      title: t('admin.id'),
       dataIndex: 'id',
       key: 'id',
       width: 60,
     },
     {
-      title: '邮箱',
+      title: t('admin.email'),
       dataIndex: 'email',
       key: 'email',
       width: 200,
       render: (email: string | null) => email ? <Text copyable={{ text: email }}>{email}</Text> : <Text type="secondary">-</Text>,
     },
     {
-      title: 'IP 地址',
+      title: t('admin.ipAddress'),
       dataIndex: 'ip_address',
       key: 'ip_address',
       width: 150,
       render: (ip: string | null) => ip ? <Text copyable={{ text: ip }}>{ip}</Text> : <Text type="secondary">-</Text>,
     },
     {
-      title: '封禁类型',
+      title: t('admin.banType'),
       dataIndex: 'ban_type',
       key: 'ban_type',
       width: 120,
       render: (banType: string, record: BlacklistRecord) => getBanTypeTag(banType, record.ban_until),
     },
     {
-      title: '封禁截止',
+      title: t('admin.banUntil'),
       dataIndex: 'ban_until',
       key: 'ban_until',
       width: 160,
       render: (banUntil: string | null) => {
-        if (!banUntil) return <Text type="secondary">永久</Text>
+        if (!banUntil) return <Text type="secondary">{t('admin.permanent')}</Text>
         const isExpired = new Date(banUntil) <= new Date()
         return (
           <Text type={isExpired ? 'secondary' : 'warning'}>
-            {new Date(banUntil).toLocaleString('zh-CN')}
+            {new Date(banUntil).toLocaleString()}
           </Text>
         )
       },
     },
     {
-      title: '原因',
+      title: t('admin.reason'),
       dataIndex: 'reason',
       key: 'reason',
       width: 150,
       render: (reason: string | null) => reason ? <Text ellipsis>{reason}</Text> : <Text type="secondary">-</Text>,
     },
     {
-      title: '封禁时间',
+      title: t('admin.banTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
-      render: (date: string) => new Date(date).toLocaleString('zh-CN'),
+      render: (date: string) => new Date(date).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 100,
       render: (_: any, record: BlacklistRecord) => (
         <Popconfirm
-          title="确认从黑名单移除？"
+          title={t('admin.confirmRemoveFromBlacklist')}
           onConfirm={() => handleDelete(record.id)}
-          okText="确认"
-          cancelText="取消"
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
         >
           <Button type="link" danger size="small" icon={<DeleteOutlined />}>
-            移除
+            {t('admin.remove')}
           </Button>
         </Popconfirm>
       ),
@@ -249,9 +251,9 @@ export default function BlacklistManagement() {
 
   return (
     <div>
-      <h2>黑名单管理</h2>
+      <h2>{t('admin.blacklistManagement')}</h2>
       <Paragraph type="secondary" style={{ marginBottom: 20 }}>
-        管理被封禁的邮箱和 IP 地址。加入黑名单的用户将无法注册和登录，即使注销后重新注册也会被阻止。
+        {t('admin.blacklistDescription')}
       </Paragraph>
 
       {/* 统计卡片 */}
@@ -259,7 +261,7 @@ export default function BlacklistManagement() {
         <Col span={8}>
           <Card size="small">
             <Statistic
-              title="永久封禁"
+              title={t('admin.permanentBan')}
               value={stats.permanent}
               valueStyle={{ color: '#ff4d4f' }}
             />
@@ -268,7 +270,7 @@ export default function BlacklistManagement() {
         <Col span={8}>
           <Card size="small">
             <Statistic
-              title="临时封禁"
+              title={t('admin.temporaryBan')}
               value={stats.temporary}
               valueStyle={{ color: '#fa8c16' }}
             />
@@ -277,7 +279,7 @@ export default function BlacklistManagement() {
         <Col span={8}>
           <Card size="small">
             <Statistic
-              title="已过期"
+              title={t('admin.expired')}
               value={stats.expired}
               valueStyle={{ color: '#8c8c8c' }}
             />
@@ -295,7 +297,7 @@ export default function BlacklistManagement() {
             setAddModalOpen(true)
           }}
         >
-          添加到黑名单
+          {t('admin.addToBlacklistButton')}
         </Button>
           <Button
             icon={<ClearOutlined />}
@@ -303,7 +305,7 @@ export default function BlacklistManagement() {
             loading={cleaningExpired}
             disabled={stats.expired === 0}
           >
-            清理过期记录 ({stats.expired})
+            {t('admin.cleanupExpired')}
           </Button>
       </div>
 
@@ -316,11 +318,12 @@ export default function BlacklistManagement() {
         pagination={{ pageSize: 20 }}
         size="small"
         scroll={{ x: 1000 }}
+        locale={{ emptyText: t('common.noData') }}
       />
 
       {/* 添加黑名单弹窗 */}
       <Modal
-        title="添加到黑名单"
+        title={t('admin.addToBlacklist')}
         open={addModalOpen}
         onOk={handleAddToBlacklist}
         onCancel={() => {
@@ -328,33 +331,33 @@ export default function BlacklistManagement() {
           addForm.resetFields()
         }}
         confirmLoading={addModalLoading}
-        okText="添加"
-        cancelText="取消"
+        okText={t('common.add')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}
       >
         <Form form={addForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
             name="email"
-            label="邮箱"
-            extra="填写邮箱或 IP 地址，至少填写一项"
+            label={t('admin.email')}
+            extra={t('admin.emailOrIpExtra')}
           >
-            <Input placeholder="输入要封禁的邮箱" />
+            <Input placeholder={t('admin.enterEmailToBan')} />
           </Form.Item>
           <Form.Item
             name="ip_address"
-            label="IP 地址"
+            label={t('admin.ipAddress')}
           >
-            <Input placeholder="输入要封禁的 IP 地址" />
+            <Input placeholder={t('admin.enterIpToBan')} />
           </Form.Item>
           <Form.Item
             name="ban_type"
-            label="封禁类型"
-            rules={[{ required: true, message: '请选择封禁类型' }]}
+            label={t('admin.banType')}
+            rules={[{ required: true, message: t('admin.pleaseSelectBanType') }]}
             initialValue="permanent"
           >
             <Select>
-              <Select.Option value="permanent">永久封禁</Select.Option>
-              <Select.Option value="temporary">临时封禁</Select.Option>
+              <Select.Option value="permanent">{t('admin.permanentBan')}</Select.Option>
+              <Select.Option value="temporary">{t('admin.temporaryBan')}</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
@@ -366,8 +369,8 @@ export default function BlacklistManagement() {
               return banType === 'temporary' ? (
                 <Form.Item
                   name="ban_until"
-                  label="封禁截止时间"
-                  rules={[{ required: true, message: '请选择封禁截止时间' }]}
+                  label={t('admin.banUntil')}
+                  rules={[{ required: true, message: t('admin.pleaseSelectBanUntil') }]}
                 >
                   <DatePicker
                     showTime
@@ -381,16 +384,16 @@ export default function BlacklistManagement() {
           </Form.Item>
           <Form.Item
             name="reason"
-            label="封禁原因"
+            label={t('admin.banReason')}
           >
-            <Input.TextArea placeholder="输入封禁原因（可选）" rows={3} />
+            <Input.TextArea placeholder={t('admin.banReasonPlaceholder')} rows={3} />
           </Form.Item>
 
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 8 }}>
-            <div style={{ color: '#ff4d4f', fontWeight: 500, marginBottom: 4 }}>注意：</div>
-            <div>• 添加到黑名单后，该邮箱/IP 将无法注册和登录</div>
-            <div>• 即使注销账号后重新注册，也会被阻止</div>
-            <div>• 临时封禁到期后，记录会自动清理</div>
+            <div style={{ color: '#ff4d4f', fontWeight: 500, marginBottom: 4 }}>{t('admin.warning')}</div>
+            <div>• {t('admin.blacklistWarning1')}</div>
+            <div>• {t('admin.blacklistWarning2')}</div>
+            <div>• {t('admin.blacklistWarning3')}</div>
           </div>
         </Form>
       </Modal>

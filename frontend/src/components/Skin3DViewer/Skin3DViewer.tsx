@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SkinViewer, IdleAnimation, WalkingAnimation, RunningAnimation } from 'skinview3d'
 import * as THREE from 'three'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +72,7 @@ function addGroundShadow(viewer: any): () => void {
 }
 
 export function Skin3DViewer({ skinUrl, capeUrl, modelType = 'default', width = 360, height = 400, initialBackView = false }: Props) {
+  const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewerRef = useRef<any>(null)
   const shadowDisposeRef = useRef<(() => void) | null>(null)
@@ -216,12 +218,12 @@ export function Skin3DViewer({ skinUrl, capeUrl, modelType = 'default', width = 
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '8px 0 0 0', flexWrap: 'wrap' }}>
-        {tinyBtn('↻ 旋转', rotating, () => setRotating(v => !v))}
-        {tinyBtn('待机', animMode === 'idle', () => setAnimMode('idle'))}
-        {tinyBtn('行走', animMode === 'walk', () => setAnimMode('walk'))}
-        {tinyBtn('奔跑', animMode === 'run', () => setAnimMode('run'))}
-        {hasCape && tinyBtn('鞘翅', backEquipment === 'elytra', () => setBackEquipment(v => v === 'elytra' ? 'cape' : 'elytra'))}
-        {tinyBtn('复位', false, handleReset)}
+        {tinyBtn('↻ ' + t('skinViewer.rotate'), rotating, () => setRotating(v => !v))}
+        {tinyBtn(t('skinViewer.idle'), animMode === 'idle', () => setAnimMode('idle'))}
+        {tinyBtn(t('skinViewer.walk'), animMode === 'walk', () => setAnimMode('walk'))}
+        {tinyBtn(t('skinViewer.run'), animMode === 'run', () => setAnimMode('run'))}
+        {hasCape && tinyBtn(t('skinViewer.elytra'), backEquipment === 'elytra', () => setBackEquipment(v => v === 'elytra' ? 'cape' : 'elytra'))}
+        {tinyBtn(t('skinViewer.reset'), false, handleReset)}
       </div>
     </div>
   )

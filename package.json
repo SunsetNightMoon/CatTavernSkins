@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "backup": "node -e \"const { backupDatabaseBeforeMigration } = require('./dist/utils/backup'); const path = require('path'); const dbPath = path.join(__dirname, 'data/skin_server.db'); console.log('[backup] 开始手动备份...'); const result = backupDatabaseBeforeMigration(dbPath); if(result) console.log('✅ 备份成功！'); else process.exit(1);\"",
     "migrate": "ts-node src/scripts/migrate.ts",
     "generate-keys": "ts-node src/scripts/generate-keys.ts",
     "test": "jest --forceExit --detectOpenHandles",
@@ -30,7 +31,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1057.0",
     "@aws-sdk/s3-request-presigner": "^3.1057.0",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-js": "^4.1.1",
@@ -40,7 +41,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.8",
+    "nodemailer": "^8.0.10",
     "pg": "^8.11.0",
     "redis": "^4.6.12",
     "sharp": "^0.33.0",
@@ -48,7 +49,7 @@
     "sqlite3": "^6.0.1",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^9.0.1"
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -64,8 +65,8 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^9.0.7",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "prettier": "^3.1.1",

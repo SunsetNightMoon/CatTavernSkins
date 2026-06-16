@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SkinViewer, IdleAnimation } from 'skinview3d'
 
 interface Props {
@@ -31,6 +32,7 @@ export function SkinThumbnail3D({
   width = 140,
   height = 180,
 }: Props) {
+  const { t } = useTranslation()
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [status, setStatus] = useState<'loading' | 'rendering' | 'done' | 'error'>('loading')
   const viewerRef = useRef<SkinViewer | null>(null)
@@ -203,9 +205,9 @@ export function SkinThumbnail3D({
           }}
         />
       ) : status === 'loading' || status === 'rendering' ? (
-        <div style={{ color: '#999', fontSize: 11 }}>渲染中...</div>
+        <div style={{ color: '#999', fontSize: 11 }}>{t('skinViewer.rendering')}</div>
       ) : (
-        <div style={{ color: '#ccc', fontSize: 11 }}>预览不可用</div>
+        <div style={{ color: '#ccc', fontSize: 11 }}>{t('skinViewer.previewUnavailable')}</div>
       )}
     </div>
   )

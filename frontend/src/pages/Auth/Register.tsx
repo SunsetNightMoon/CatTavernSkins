@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message, Alert, AutoComplete, Divider, Checkbox } from 'antd'
+import { Form, Input, Button, message, Alert, AutoComplete, Divider, Checkbox, Dropdown } from 'antd'
+import { GlobalOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import type { SelectProps } from 'antd'
 import { authService } from '../../services/authService'
 import type { RegisterDTO } from '../../types'
@@ -30,7 +32,8 @@ function getEmailOptions(input: string): SelectProps<string>['options'] {
 }
 
 export function Register() {
-  usePageTitle('注册')
+  const { t } = useTranslation()
+  usePageTitle(t('auth.register'))
   const [form] = Form.useForm()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
@@ -133,13 +136,13 @@ export function Register() {
       const result = await authService.register(registerData)
 
       if (result.isFirstUser) {
-        message.success('注册成功！您是第一位用户，已自动设为超级管理员')
+        message.success(t('auth.registerSuccessFirst'))
       } else {
-        message.success('注册成功！请查收验证邮件')
+        message.success(t('auth.registerSuccess'))
       }
       navigate('/login')
     } catch (error: any) {
-      const errMsg = error.response?.data?.errorMessage || '注册失败'
+      const errMsg = error.response?.data?.errorMessage || t('auth.registerFailed')
       // 不整体刷新表单/验证码，仅高亮对应出错字段，保留已填内容
       if (/验证码/.test(errMsg)) {
         if (captchaType === 'math') {
@@ -166,8 +169,37 @@ export function Register() {
     }
   }
 
+  const langItems = [
+    { key: 'SCH', label: '简体中文' },
+    { key: 'TCH', label: '繁體中文' },
+    { key: 'EN', label: 'English' },
+    { key: 'JP', label: '日本語' },
+  ]
+
   return (
     <div className="auth-page" data-theme={theme}>
+      {/* 语言切换 */}
+      <div className="auth-lang-switcher">
+        <Dropdown
+          placement="bottomRight"
+          overlayClassName="auth-lang-dropdown"
+          menu={{
+            items: langItems.map((item) => ({
+              key: item.key,
+              label: <span>{item.label}</span>,
+            })),
+            onClick: ({ key }) => {
+              window.localStorage.setItem('cattavern-language', key)
+              window.location.reload()
+            },
+          }}
+        >
+          <button type="button" className="auth-lang-switcher__btn">
+            <GlobalOutlined />
+          </button>
+        </Dropdown>
+      </div>
+
       {hasCustomBg ? (
         isBgVideo ? (
           <video
@@ -221,11 +253,11 @@ export function Register() {
           </div>
 
           <div className="auth-card">
-          <h2 className="auth-card__title">注册</h2>
+          <h2 className="auth-card__title">{t('auth.register')}</h2>
 
           <Alert
-            message="注册说明"
-            description="注册时必须填写 Minecraft 游戏名（角色ID），3-16个字符，仅限字母、数字和下划线。第一个注册用户自动成为超级管理员。"
+            message={t('auth.registerGuideTitle')}
+            description={t('auth.registerGuideDesc')}
             type="info"
             showIcon
             style={{ marginBottom: 24 }}
@@ -233,45 +265,45 @@ export function Register() {
 
           <Form form={form} layout="vertical" onFinish={onFinish}>
             <Form.Item
-              label="Minecraft 游戏名（角色ID）"
+              label={t('auth.profileNameLabel')}
               name="profile_name"
               rules={[
-                { required: true, message: '请输入角色ID' },
-                { min: 3, max: 16, message: '角色ID需3-16个字符' },
-                { pattern: /^[a-zA-Z0-9_]+$/, message: '仅限字母、数字和下划线' },
+                { required: true, message: t('auth.profileNameRequired') },
+                { min: 3, max: 16, message: t('auth.profileNameMin') },
+                { pattern: /^[a-zA-Z0-9_]+$/, message: t('auth.profileNamePattern') },
               ]}
             >
-              <Input placeholder="例如: Steve_2024" size="large" />
+              <Input placeholder={t('auth.profileNamePlaceholder')} size="large" />
             </Form.Item>
 
             <Form.Item
-              label="邮箱"
+              label={t('auth.emailLabel')}
               name="email"
-              rules={[{ required: true, type: 'email', message: '请输入有效的邮箱' }]}
+              rules={[{ required: true, type: 'email', message: t('auth.emailInvalid') }]}
             >
               <AutoComplete
                 options={emailOptions}
                 onSearch={handleEmailSearch}
                 onSelect={handleEmailSelect}
                 onBlur={() => setTimeout(() => setEmailOptions([]), 200)}
-                placeholder="请输入邮箱"
+                placeholder={t('auth.emailPlaceholder')}
                 size="large"
               />
             </Form.Item>
 
             <Form.Item
-              label="密码"
+              label={t('auth.passwordLabel')}
               name="password"
               rules={[
-                { required: true, message: '请输入密码' },
-                { min: 6, message: '密码至少6位' },
+                { required: true, message: t('auth.passwordPlaceholder') },
+                { min: 6, message: t('auth.passwordMin') },
               ]}
             >
-              <Input.Password placeholder="请输入密码（至少6位）" size="large" />
+              <Input.Password placeholder={t('auth.passwordPlaceholder') + ' ' + t('auth.passwordMin')} size="large" />
             </Form.Item>
 
             {captchaType === 'turnstile' ? (
-              <Form.Item label="人机验证">
+              <Form.Item label={t('auth.captcha')}>
                 <TurnstileWidget
                   siteKey={turnstileSiteKey}
                   mode="managed"
@@ -281,7 +313,7 @@ export function Register() {
               </Form.Item>
             ) : (
               <>
-                <Form.Item label="人机验证（计算下面的结果）">
+                <Form.Item label={t('auth.captchaMath')}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Input
                       value={captchaQuestion}
@@ -289,16 +321,16 @@ export function Register() {
                       style={{ width: '180px', fontWeight: 'bold' }}
                       size="large"
                     />
-                    <Button onClick={loadCaptcha} size="large">换一道</Button>
+                    <Button onClick={loadCaptcha} size="large">{t('auth.captchaRefresh')}</Button>
                   </div>
                 </Form.Item>
 
                 <Form.Item
                   name="captcha_answer"
-                  label="你的答案"
-                  rules={[{ required: true, message: '请输入答案' }]}
+                  label={t('auth.captchaAnswerLabel')}
+                  rules={[{ required: true, message: t('auth.captchaAnswerPlaceholder') }]}
                 >
-                  <Input placeholder="输入数字答案" style={{ width: '180px' }} size="large" />
+                  <Input placeholder={t('auth.captchaAnswerPlaceholder')} style={{ width: '180px' }} size="large" />
                 </Form.Item>
               </>
             )}
@@ -324,19 +356,19 @@ export function Register() {
 
             <Form.Item style={{ marginBottom: 16 }}>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                注 册
+                {t('auth.registerButton')}
               </Button>
             </Form.Item>
 
             <div className="auth-card__footer">
-              <span>已有账户？ </span>
-              <Link to="/login">立即登录</Link>
+              <span>{t('auth.hasAccount')} </span>
+              <Link to="/login">{t('auth.loginNow')}</Link>
             </div>
           </Form>
 
           {(oauthProviders.github || oauthProviders.microsoft) && (
             <>
-              <Divider style={{ borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)', margin: '20px 0' }}>第三方登录</Divider>
+              <Divider style={{ borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)', margin: '20px 0' }}>{t('auth.thirdPartyLogin')}</Divider>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                 {oauthProviders.github && (
                   <Button
@@ -349,7 +381,7 @@ export function Register() {
                     href="/api/auth/oauth/github"
                     className="oauth-btn oauth-btn--github"
                   >
-                    GitHub 登录
+                    {t('auth.githubLogin')}
                   </Button>
                 )}
                 {oauthProviders.microsoft && (
@@ -366,7 +398,7 @@ export function Register() {
                     href="/api/auth/oauth/microsoft"
                     className="oauth-btn oauth-btn--microsoft"
                   >
-                    Microsoft 登录
+                    {t('auth.microsoftLogin')}
                   </Button>
                 )}
               </div>

@@ -3,6 +3,7 @@ import { Table, Tag, Button, Space, message, Modal, Form, Input, Select, Popconf
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuthStore } from '../../store/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface Skin {
   id: string
@@ -20,27 +21,28 @@ interface Skin {
   created_at: string
 }
 
-function getPermissionTag(level: string) {
+function getPermissionTag(level: string, t: (key: string) => string) {
   const map: Record<string, { color: string; text: string }> = {
-    private: { color: 'default', text: '私有' },
-    public_no_download: { color: 'blue', text: '公开不可下载' },
-    public_downloadable: { color: 'green', text: '公开可下载' },
+    private: { color: 'default', text: t('admin.private') },
+    public_no_download: { color: 'blue', text: t('admin.publicNoDownload') },
+    public_downloadable: { color: 'green', text: t('admin.publicDownloadable') },
   }
   const s = map[level] || { color: 'default', text: level }
-  return <Tag color={s.color}>{s.text}</Tag>
+  return <Tag color={s.color} style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{s.text}</Tag>
 }
 
-function getStatusTag(status: string) {
+function getStatusTag(status: string, t: (key: string) => string) {
   const map: Record<string, { color: string; text: string }> = {
-    pending: { color: 'orange', text: '待审核' },
-    approved: { color: 'green', text: '已通过' },
-    rejected: { color: 'red', text: '已拒绝' },
+    pending: { color: 'orange', text: t('admin.pending') },
+    approved: { color: 'green', text: t('admin.approved') },
+    rejected: { color: 'red', text: t('admin.rejected') },
   }
   const s = map[status] || { color: 'default', text: status }
-  return <Tag color={s.color}>{s.text}</Tag>
+  return <Tag color={s.color} style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{s.text}</Tag>
 }
 
 export default function AdminSkinManagement() {
+  const { t } = useTranslation()
   const [skins, setSkins] = useState<Skin[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -61,14 +63,14 @@ export default function AdminSkinManagement() {
       })
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `请求失败: ${res.status}`);
+        throw new Error(errorData.errorMessage || t('common.requestFailedWithStatus', { status: res.status }))
       }
       const data = await res.json()
       setSkins(data.skins || data)
       if (data.total !== undefined) setTotal(data.total)
     } catch (e: any) {
-      message.error(`加载皮肤列表失败: ${e.message}`)
-      console.error('加载皮肤列表失败:', e)
+      message.error(t('admin.loadSkinsFailed', { message: e.message }))
+      console.error(t('admin.loadSkinsFailed'), e)
     } finally {
       setLoading(false)
     }
@@ -105,12 +107,12 @@ export default function AdminSkinManagement() {
         },
         body: JSON.stringify(values),
       })
-      if (!res.ok) throw new Error('更新失败')
-      message.success('皮肤信息已更新')
+      if (!res.ok) throw new Error(t('admin.updateFailed'))
+      message.success(t('admin.skinUpdated'))
       setEditModalOpen(false)
       loadSkins(page)
     } catch (e) {
-      message.error('更新失败')
+      message.error(t('admin.updateFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -122,17 +124,17 @@ export default function AdminSkinManagement() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       })
-      if (!res.ok) throw new Error('删除失败')
-      message.success('皮肤已删除')
+      if (!res.ok) throw new Error(t('admin.deleteFailed'))
+      message.success(t('admin.skinDeleted'))
       loadSkins(page)
     } catch (e) {
-      message.error('删除失败')
+      message.error(t('admin.deleteFailed'))
     }
   }
 
   const columns: ColumnsType<Skin> = [
     {
-      title: 'ID',
+      title: t('admin.id'),
       dataIndex: 'id',
       key: 'id',
       width: 230,
@@ -140,66 +142,75 @@ export default function AdminSkinManagement() {
       render: (id: string) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{id}</span>,
     },
     {
-      title: '预览',
+      title: t('admin.preview'),
       key: 'preview',
-      width: 70,
+      width: 80,
       render: (_: any, r: Skin) => (
         <img
           src={r.file_path.startsWith('./') ? r.file_path.replace(/^\./, '') : r.file_path}
           alt=""
-          style={{ width: 40, height: 40, border: '1px solid #d9d9d9', imageRendering: 'pixelated' }}
+          style={{
+            width: 64,
+            height: 'auto',
+            maxHeight: 64,
+            border: '1px solid #d9d9d9',
+            borderRadius: 4,
+            imageRendering: 'pixelated',
+            display: 'block',
+            objectFit: 'contain',
+          }}
         />
       ),
     },
     {
-      title: '名称',
+      title: t('admin.name'),
       dataIndex: 'name',
       key: 'name',
       ellipsis: true,
       width: 120,
     },
     {
-      title: '上传者',
+      title: t('admin.uploader'),
       key: 'uploader',
       width: 110,
       render: (_: any, r: Skin) => r.uploader_name || `UID.${r.user_uid}`,
     },
     {
-      title: '权限',
+      title: t('admin.permission'),
       dataIndex: 'permission_level',
       key: 'permission_level',
-      width: 120,
-      render: (t: string) => getPermissionTag(t),
+      width: 160,
+      render: (text: string) => getPermissionTag(text, t),
     },
     {
-      title: '状态',
+      title: t('admin.status'),
       dataIndex: 'approval_status',
       key: 'approval_status',
-      width: 90,
-      render: (t: string) => getStatusTag(t),
+      width: 100,
+      render: (text: string) => getStatusTag(text, t),
     },
     {
-      title: '浏览/下载',
+      title: t('admin.viewDownload'),
       key: 'stats',
       width: 90,
       render: (_: any, r: Skin) => `${r.view_count || 0} / ${r.download_count || 0}`,
     },
     {
-      title: '上传时间',
+      title: t('admin.uploadTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
       render: (d: string) => new Date(d).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 130,
       render: (_: any, r: Skin) => (
         <Space>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)}>编辑</Button>
-          <Popconfirm title="确认删除此皮肤？" onConfirm={() => handleDelete(r)} okText="确认" cancelText="取消">
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(r)}>{t('common.edit')}</Button>
+          <Popconfirm title={t('admin.confirmDeleteSkin')} onConfirm={() => handleDelete(r)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('admin.delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -208,9 +219,9 @@ export default function AdminSkinManagement() {
 
   return (
     <div>
-      <h2>皮肤管理</h2>
+      <h2>{t('admin.skinManagement')}</h2>
       <p style={{ color: 'var(--text-muted)', marginBottom: 16, fontSize: 13 }}>
-        共 {total || skins.length} 个皮肤，以下是所有用户上传的皮肤。
+        {t('admin.totalSkins', { total: total || skins.length })}
       </p>
       <Table
         columns={columns}
@@ -224,34 +235,34 @@ export default function AdminSkinManagement() {
 
       {/* 编辑弹窗 */}
       <Modal
-        title="编辑皮肤信息"
+        title={t('admin.editSkinInfo')}
         open={editModalOpen}
         onOk={handleEditSubmit}
         onCancel={() => setEditModalOpen(false)}
         confirmLoading={submitting}
-        okText="保存"
-        cancelText="取消"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="name" label="皮肤名称" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder="皮肤名称" maxLength={50} />
+          <Form.Item name="name" label={t('admin.skinName')} rules={[{ required: true, message: t('admin.pleaseEnterName') }]}>
+            <Input placeholder={t('admin.skinNamePlaceholder')} maxLength={50} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={3} placeholder="皮肤描述（可选）" maxLength={200} />
+          <Form.Item name="description" label={t('admin.description')}>
+            <Input.TextArea rows={3} placeholder={t('admin.skinDescriptionPlaceholder')} maxLength={200} />
           </Form.Item>
-          <Form.Item name="license_type" label="协议类型" rules={[{ required: true, message: '请选择协议' }]}>
+          <Form.Item name="license_type" label={t('admin.licenseType')} rules={[{ required: true, message: t('admin.pleaseSelectLicense') }]}>
             <Select>
-              <Select.Option value="ARR">ARR（保留所有权利）</Select.Option>
-              <Select.Option value="CC0">CC0（公有领域）</Select.Option>
-              <Select.Option value="CC-BY">CC-BY（署名）</Select.Option>
-              <Select.Option value="CC-BY-SA">CC-BY-SA（署名-相同方式共享）</Select.Option>
+              <Select.Option value="ARR">{t('admin.licenseARR')}</Select.Option>
+              <Select.Option value="CC0">{t('admin.licenseCC0')}</Select.Option>
+              <Select.Option value="CC-BY">{t('admin.licenseCCBY')}</Select.Option>
+              <Select.Option value="CC-BY-SA">{t('admin.licenseCCBYSA')}</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="permission_level" label="权限级别" rules={[{ required: true }]}>
+          <Form.Item name="permission_level" label={t('admin.permissionLevel')} rules={[{ required: true }]}>
             <Select>
-              <Select.Option value="private">私有（仅自己可见）</Select.Option>
-              <Select.Option value="public_no_download">公开不可下载</Select.Option>
-              <Select.Option value="public_downloadable">公开可下载</Select.Option>
+              <Select.Option value="private">{t('admin.private')}</Select.Option>
+              <Select.Option value="public_no_download">{t('admin.publicNoDownload')}</Select.Option>
+              <Select.Option value="public_downloadable">{t('admin.publicDownloadable')}</Select.Option>
             </Select>
           </Form.Item>
         </Form>

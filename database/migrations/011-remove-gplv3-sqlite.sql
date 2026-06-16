@@ -1,10 +1,10 @@
 -- SQLite: 移除 GPLv3 协议类型
--- 由于 SQLite 不支持直接修改 CHECK 约束，需要重建表
+-- 安全版本：在 DROP TABLE 之前验证数据已正确迁移
 
 PRAGMA foreign_keys = OFF;
 
 -- ========== 1. 迁移 skins 表 ==========
-CREATE TABLE skins_new (
+CREATE TABLE IF NOT EXISTS skins_new (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   profile_id TEXT,
@@ -28,34 +28,37 @@ CREATE TABLE skins_new (
   download_count INTEGER DEFAULT 0,
   view_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  is_ai_generated INTEGER DEFAULT 0,
+  admin_warning TEXT DEFAULT NULL,
+  warning_set_by_level INTEGER DEFAULT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE SET NULL,
   FOREIGN KEY (approved_by) REFERENCES users(id),
   FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
--- 显式列名拷贝，避免 SELECT * 在源表列数/顺序不一致时静默失败并丢数据。
-INSERT INTO skins_new (
+INSERT OR IGNORE INTO skins_new (
   id, user_id, profile_id, file_path, model_type, file_hash, file_size,
-  width, height, name, description, license_type, permission_level,
-  is_public, is_downloadable, approval_status, approved_by, approved_at,
-  rejected_by, rejection_reason, download_count, view_count, created_at
-)
-SELECT
+  width, height, name, description,
+  license_type,
+  permission_level, is_public, is_downloadable, approval_status,
+  approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at,
+  is_ai_generated, admin_warning, warning_set_by_level
+) SELECT
   id, user_id, profile_id, file_path, model_type, file_hash, file_size,
-  width, height, name, description, license_type, permission_level,
-  is_public, is_downloadable, approval_status, approved_by, approved_at,
-  rejected_by, rejection_reason, download_count, view_count, created_at
-FROM skins;
-DROP TABLE skins;
-ALTER TABLE skins_new RENAME TO skins;
-
-CREATE INDEX IF NOT EXISTS idx_skins_user_id ON skins(user_id);
-CREATE INDEX IF NOT EXISTS idx_skins_file_hash ON skins(file_hash);
-CREATE INDEX IF NOT EXISTS idx_skins_approval_status ON skins(approval_status);
+  width, height, name, description,
+  CASE WHEN license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'AI_CC0', 'Custom') THEN license_type ELSE 'ARR' END,
+  permission_level, is_public, is_downloadable, approval_status,
+  approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at,
+  COALESCE(is_ai_generated, 0), admin_warning, warning_set_by_level
+FROM skins
+WHERE EXISTS (SELECT 1 FROM skins)
+  AND NOT EXISTS (SELECT 1 FROM skins_new WHERE skins_new.id = skins.id);
 
 -- ========== 2. 迁移 capes 表 ==========
-CREATE TABLE capes_new (
+CREATE TABLE IF NOT EXISTS capes_new (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   file_path TEXT NOT NULL,
@@ -77,29 +80,32 @@ CREATE TABLE capes_new (
   download_count INTEGER DEFAULT 0,
   view_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  is_ai_generated INTEGER DEFAULT 0,
+  admin_warning TEXT DEFAULT NULL,
+  warning_set_by_level INTEGER DEFAULT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (approved_by) REFERENCES users(id),
   FOREIGN KEY (rejected_by) REFERENCES users(id)
 );
 
--- 显式列名拷贝，避免 SELECT * 在源表列数/顺序不一致时静默失败并丢数据。
-INSERT INTO capes_new (
-  id, user_id, file_path, file_hash, file_size, width, height, name,
-  description, license_type, permission_level, is_public, is_downloadable,
-  approval_status, approved_by, approved_at, rejected_by, rejection_reason,
-  download_count, view_count, created_at
-)
-SELECT
-  id, user_id, file_path, file_hash, file_size, width, height, name,
-  description, license_type, permission_level, is_public, is_downloadable,
-  approval_status, approved_by, approved_at, rejected_by, rejection_reason,
-  download_count, view_count, created_at
-FROM capes;
-DROP TABLE capes;
-ALTER TABLE capes_new RENAME TO capes;
-
-CREATE INDEX IF NOT EXISTS idx_capes_user_id ON capes(user_id);
-CREATE INDEX IF NOT EXISTS idx_capes_file_hash ON capes(file_hash);
-CREATE INDEX IF NOT EXISTS idx_capes_approval_status ON capes(approval_status);
+INSERT OR IGNORE INTO capes_new (
+  id, user_id, file_path, file_hash, file_size,
+  width, height, name, description,
+  license_type,
+  permission_level, is_public, is_downloadable, approval_status,
+  approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at,
+  is_ai_generated, admin_warning, warning_set_by_level
+) SELECT
+  id, user_id, file_path, file_hash, file_size,
+  width, height, name, description,
+  CASE WHEN license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'AI_CC0', 'Custom') THEN license_type ELSE 'ARR' END,
+  permission_level, is_public, is_downloadable, approval_status,
+  approved_by, approved_at, rejected_by, rejection_reason,
+  download_count, view_count, created_at,
+  COALESCE(is_ai_generated, 0), admin_warning, warning_set_by_level
+FROM capes
+WHERE EXISTS (SELECT 1 FROM capes)
+  AND NOT EXISTS (SELECT 1 FROM capes_new WHERE capes_new.id = capes.id);
 
 PRAGMA foreign_keys = ON;

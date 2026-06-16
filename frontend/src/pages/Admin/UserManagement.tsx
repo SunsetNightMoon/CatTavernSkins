@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Table, Tag, Button, Space, message, Modal, Form, Select, DatePicker, Popconfirm, Typography, Tooltip } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 import { useAuthStore } from '../../store/authStore'
@@ -18,11 +19,11 @@ interface UserRecord {
   created_at: string
 }
 
-function getRoleName(level: number): string {
+function getRoleName(level: number, t: (key: string) => string): string {
   switch (level) {
-    case 2: return '超级管理员'
-    case 1: return '管理员'
-    default: return '普通用户'
+    case 2: return t('admin.superAdmin')
+    case 1: return t('admin.admin')
+    default: return t('admin.normalUser')
   }
 }
 
@@ -34,20 +35,21 @@ function getRoleTagColor(level: number): string {
   }
 }
 
-function getBanStatus(bannedUntil: string | null): { text: string; color: string } {
+function getBanStatus(bannedUntil: string | null, t: (key: string, options?: { [key: string]: any }) => string): { text: string; color: string } {
   if (!bannedUntil || bannedUntil === '') {
-    return { text: '正常', color: 'green' }
+    return { text: t('admin.normal'), color: 'green' }
   }
   if (bannedUntil === 'permanent') {
-    return { text: '永久封禁', color: 'red' }
+    return { text: t('admin.permanentlyBanned'), color: 'red' }
   }
   if (new Date(bannedUntil) > new Date()) {
-    return { text: `封禁至 ${new Date(bannedUntil).toLocaleDateString('zh-CN')}`, color: 'orange' }
+    return { text: t('admin.bannedUntil', { date: new Date(bannedUntil).toLocaleDateString() }), color: 'orange' }
   }
-  return { text: '正常', color: 'green' }
+  return { text: t('admin.normal'), color: 'green' }
 }
 
 export default function UserManagement() {
+  const { t } = useTranslation()
   const { user: currentUser, token } = useAuthStore()
   const [users, setUsers] = useState<UserRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,13 +83,13 @@ export default function UserManagement() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `请求失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.requestFailedWithStatus', { status: response.status }))
       }
       const data = await response.json()
       setUsers(data)
     } catch (error: any) {
-      message.error(`加载用户列表失败: ${error.message}`)
-      console.error('加载用户列表失败:', error)
+      message.error(t('admin.loadUsersFailed', { message: error.message }))
+      console.error(t('admin.loadUsersFailed'), error)
     } finally {
       setLoading(false)
     }
@@ -103,13 +105,13 @@ export default function UserManagement() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
       }
-      message.success('操作成功')
+      message.success(t('common.operationSuccess'))
       loadUsers()
     } catch (error: any) {
-      message.error(`操作失败: ${error.message}`)
-      console.error('切换激活状态失败:', error)
+      message.error(t('common.operationFailed', { message: error.message }))
+      console.error(t('admin.toggleActiveFailed'), error)
     }
   }
 
@@ -136,14 +138,14 @@ export default function UserManagement() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
       }
-      message.success('角色已更新')
+      message.success(t('admin.roleUpdated'))
       setRoleModalOpen(false)
       loadUsers()
     } catch (error: any) {
-      message.error(`操作失败: ${error.message}`)
-      console.error('更新角色失败:', error)
+      message.error(t('common.operationFailed', { message: error.message }))
+      console.error(t('admin.updateRoleFailed'), error)
     } finally {
       setRoleModalLoading(false)
     }
@@ -181,14 +183,14 @@ export default function UserManagement() {
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.errorMessage || `操作失败: ${response.status}`);
+        throw new Error(errorData.errorMessage || t('common.operationFailedWithStatus', { status: response.status }))
       }
-      message.success(banType === 'unban' ? '已解除封禁' : '封禁操作成功')
+      message.success(banType === 'unban' ? t('admin.unbanned') : t('admin.banSuccess'))
       setBanModalOpen(false)
       loadUsers()
     } catch (error: any) {
-      message.error(`操作失败: ${error.message}`)
-      console.error('封禁操作失败:', error)
+      message.error(t('common.operationFailed', { message: error.message }))
+      console.error(t('admin.banFailed'), error)
     } finally {
       setBanModalLoading(false)
     }
@@ -207,10 +209,10 @@ export default function UserManagement() {
         },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.errorMessage || '发送失败')
-      message.success('验证邮件已发送')
+      if (!res.ok) throw new Error(data.errorMessage || t('admin.sendFailed'))
+      message.success(t('admin.verificationEmailSent'))
     } catch (err: any) {
-      message.error(err.message || '发送失败')
+      message.error(err.message || t('admin.sendFailed'))
     } finally {
       setSendingVerification(null)
     }
@@ -226,11 +228,11 @@ export default function UserManagement() {
         },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.errorMessage || '操作失败')
-      message.success('邮箱已验证')
+      if (!res.ok) throw new Error(data.errorMessage || t('common.operationFailed'))
+      message.success(t('admin.emailVerified'))
       loadUsers()
     } catch (err: any) {
-      message.error(err.message || '操作失败')
+      message.error(err.message || t('common.operationFailed'))
     }
   }
 
@@ -244,14 +246,14 @@ export default function UserManagement() {
 
   const columns: ColumnsType<UserRecord> = [
     {
-      title: '用户 ID',
+      title: t('admin.userId'),
       dataIndex: 'user_uid',
       key: 'user_uid',
       width: 90,
       render: (uid: number) => <Text strong>{uid}</Text>,
     },
     {
-      title: '邮箱',
+      title: t('admin.email'),
       dataIndex: 'email',
       key: 'email',
       width: 220,
@@ -259,42 +261,42 @@ export default function UserManagement() {
       render: (email: string) => <span style={{ whiteSpace: 'nowrap' }}>{email}</span>,
     },
     {
-      title: '身份',
+      title: t('admin.role'),
       dataIndex: 'level',
       key: 'level',
       width: 180,
       render: (level: number, record: UserRecord) => (
         <Space>
-          <Tag color={getRoleTagColor(level)}>{getRoleName(level)}</Tag>
+          <Tag color={getRoleTagColor(level)}>{getRoleName(level, t)}</Tag>
           {isSuperAdmin && record.id !== currentUser?.id && record.level < 2 && (
             <Button type="link" size="small" onClick={() => openRoleModal(record)}>
-              修改
+              {t('common.edit')}
             </Button>
           )}
         </Space>
       ),
     },
     {
-      title: '账号状态',
+      title: t('admin.accountStatus'),
       dataIndex: 'banned_until',
       key: 'banned_until',
       width: 180,
       render: (bannedUntil: string | null) => {
-        const status = getBanStatus(bannedUntil)
+        const status = getBanStatus(bannedUntil, t)
         return <Tag color={status.color}>{status.text}</Tag>
       },
     },
     {
-      title: '活跃状态',
+      title: t('admin.activeStatus'),
       dataIndex: 'is_active',
       key: 'is_active',
       width: 120,
       render: (isActive: number, record: UserRecord) => {
         if (!canToggleActive(record)) {
           return isActive ? (
-            <Tag color="green">正常</Tag>
+            <Tag color="green">{t('admin.normal')}</Tag>
           ) : (
-            <Tag color="red">已禁用</Tag>
+            <Tag color="red">{t('admin.disabled')}</Tag>
           )
         }
         return (
@@ -304,16 +306,16 @@ export default function UserManagement() {
             onClick={() => handleToggleActive(record.id, !isActive)}
           >
             {isActive ? (
-              <Tag color="green">正常</Tag>
+              <Tag color="green">{t('admin.normal')}</Tag>
             ) : (
-              <Tag color="red">已禁用</Tag>
+              <Tag color="red">{t('admin.disabled')}</Tag>
             )}
           </Button>
         )
       },
     },
     {
-      title: '封禁操作',
+      title: t('admin.banAction'),
       key: 'ban',
       width: 180,
       render: (_: any, record: UserRecord) => {
@@ -322,19 +324,19 @@ export default function UserManagement() {
         // 不能操作同级或更高级的用户
         if (record.level >= (currentUser?.level ?? 0)) return <Text type="secondary">-</Text>
 
-        const banStatus = getBanStatus(record.banned_until)
+        const banStatus = getBanStatus(record.banned_until, t)
         const isBanned = banStatus.color !== 'green'
 
         if (isBanned) {
           return (
             <Popconfirm
-              title="确认解除封禁？"
+              title={t('admin.confirmUnban')}
               onConfirm={() => openBanModal(record, 'unban')}
-              okText="确认"
-              cancelText="取消"
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
             >
               <Button type="link" size="small" danger>
-                解除封禁
+                {t('admin.unban')}
               </Button>
             </Popconfirm>
           )
@@ -348,7 +350,7 @@ export default function UserManagement() {
               danger
               onClick={() => openBanModal(record, 'temporary')}
             >
-              临时封禁
+              {t('admin.temporaryBan')}
             </Button>
             <Button
               type="link"
@@ -356,14 +358,14 @@ export default function UserManagement() {
               danger
               onClick={() => openBanModal(record, 'permanent')}
             >
-              永久封禁
+              {t('admin.permanentBan')}
             </Button>
           </Space>
         )
       },
     },
     {
-      title: '邮箱验证',
+      title: t('admin.emailVerification'),
       dataIndex: 'email_verified',
       key: 'email_verified',
       width: 200,
@@ -372,27 +374,27 @@ export default function UserManagement() {
         return (
           <Space>
             <Tag color={isVerified ? 'green' : 'orange'}>
-              {isVerified ? '已验证' : '未验证'}
+              {isVerified ? t('admin.verified') : t('admin.unverified')}
             </Tag>
             {!isVerified && (
               <Space size={4}>
-                <Tooltip title="手动验证此用户邮箱">
+                <Tooltip title={t('admin.manualVerifyTooltip')}>
                   <Button
                     type="link"
                     size="small"
                     onClick={() => handleVerifyEmail(record.id)}
                   >
-                    验证
+                    {t('admin.verify')}
                   </Button>
                 </Tooltip>
-                <Tooltip title="发送验证邮件">
+                <Tooltip title={t('admin.sendVerificationEmailTooltip')}>
                   <Button
                     type="link"
                     size="small"
                     loading={sendingVerification === record.id}
                     onClick={() => handleSendVerification(record.id)}
                   >
-                    发送邮件
+                    {t('admin.sendEmail')}
                   </Button>
                 </Tooltip>
               </Space>
@@ -402,17 +404,17 @@ export default function UserManagement() {
       },
     },
     {
-      title: '注册时间',
+      title: t('admin.registrationTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
-      render: (date: string) => new Date(date).toLocaleString('zh-CN'),
+      render: (date: string) => new Date(date).toLocaleString(),
     },
   ]
 
   return (
     <div>
-      <h2>用户管理</h2>
+      <h2>{t('admin.userManagement')}</h2>
       <Table
         columns={columns}
         dataSource={users}
@@ -424,32 +426,32 @@ export default function UserManagement() {
 
       {/* 角色编辑弹窗 */}
       <Modal
-        title={`修改用户身份 - ${editingUser?.email}`}
+        title={`${t('admin.editRoleModal')} - ${editingUser?.email}`}
         open={roleModalOpen}
         onOk={handleRoleSubmit}
         onCancel={() => setRoleModalOpen(false)}
         confirmLoading={roleModalLoading}
-        okText="确认修改"
-        cancelText="取消"
+        okText={t('admin.confirmModify')}
+        cancelText={t('common.cancel')}
       >
         <Form form={roleForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
             name="level"
-            label="身份等级"
-            rules={[{ required: true, message: '请选择身份' }]}
+            label={t('admin.roleLevel')}
+            rules={[{ required: true, message: t('admin.pleaseSelectRole') }]}
           >
             <Select>
-              <Select.Option value={0}>普通用户</Select.Option>
-              <Select.Option value={1}>管理员</Select.Option>
+              <Select.Option value={0}>{t('admin.normalUser')}</Select.Option>
+              <Select.Option value={1}>{t('admin.admin')}</Select.Option>
               {isSuperAdmin && editingUser?.id === currentUser?.id && (
-                <Select.Option value={2}>超级管理员</Select.Option>
+                <Select.Option value={2}>{t('admin.superAdmin')}</Select.Option>
               )}
             </Select>
           </Form.Item>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-            <div>Level 2 - 超级管理员（完全控制）</div>
-            <div>Level 1 - 管理员（审核皮肤）</div>
-            <div>Level 0 - 普通用户</div>
+            <div>{t('admin.level2Desc')}</div>
+            <div>{t('admin.level1Desc')}</div>
+            <div>{t('admin.level0Desc')}</div>
           </div>
         </Form>
       </Modal>
@@ -458,51 +460,51 @@ export default function UserManagement() {
       <Modal
         title={
           banType === 'unban'
-            ? `解除封禁 - ${editingUser?.email}`
+            ? `${t('admin.unbanModalTitle')} - ${editingUser?.email}`
             : banType === 'permanent'
-              ? `永久封禁 - ${editingUser?.email}`
-              : `临时封禁 - ${editingUser?.email}`
+              ? `${t('admin.permanentBanModalTitle')} - ${editingUser?.email}`
+              : `${t('admin.temporaryBanModalTitle')} - ${editingUser?.email}`
         }
         open={banModalOpen}
         onOk={handleBanSubmit}
         onCancel={() => setBanModalOpen(false)}
         confirmLoading={banModalLoading}
-        okText="确认"
-        cancelText="取消"
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ danger: banType !== 'unban' }}
       >
         {banType === 'unban' ? (
           <div style={{ marginTop: 16 }}>
-            <p>确认解除该用户的封禁状态？</p>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>解除封禁后，用户可以正常登录。</p>
+            <p>{t('admin.confirmUnbanMessage')}</p>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>{t('admin.unbanExplanation')}</p>
           </div>
         ) : banType === 'permanent' ? (
           <div style={{ marginTop: 16 }}>
-            <p style={{ color: '#ff4d4f', fontWeight: 'bold' }}>警告：此操作将永久封禁该用户！</p>
-            <p>永久封禁后：</p>
+            <p style={{ color: '#ff4d4f', fontWeight: 'bold' }}>{t('admin.permanentBanWarning')}</p>
+            <p>{t('admin.afterPermanentBan')}</p>
             <ul>
-              <li>用户将无法登录</li>
-              <li>所有登录令牌将被清除</li>
-              <li>封禁不可自动解除，只能由管理员手动解除</li>
+              <li>{t('admin.userCannotLogin')}</li>
+              <li>{t('admin.tokensCleared')}</li>
+              <li>{t('admin.banCannotBeAutoRemoved')}</li>
             </ul>
           </div>
         ) : (
           <Form form={banForm} layout="vertical" style={{ marginTop: 16 }}>
             <Form.Item
               name="expiryDate"
-              label="封禁截止日期"
-              rules={[{ required: true, message: '请选择封禁截止日期' }]}
+              label={t('admin.banExpiryDate')}
+              rules={[{ required: true, message: t('admin.pleaseSelectBanExpiryDate') }]}
             >
               <DatePicker
                 style={{ width: '100%' }}
                 showTime
                 format="YYYY-MM-DD HH:mm"
                 disabledDate={(current) => current && current < dayjs().startOf('day')}
-                placeholder="选择封禁截止日期"
+                placeholder={t('admin.selectBanExpiryDate')}
               />
             </Form.Item>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-              封禁截止日期到后，用户将自动解除封禁。
+              {t('admin.banAutoRemoval')}
             </p>
           </Form>
         )}

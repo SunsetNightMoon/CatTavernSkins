@@ -5,8 +5,7 @@ export function ErrorMessage({ message }: { message: string }) {
       textAlign: 'center',
       color: '#ff4d4f',
     }}>
-      <h3>错误</h3>
-      <p>{message}</p>
+      <h3>{message ? message : 'Error'}</h3>
     </div>
   );
 }
