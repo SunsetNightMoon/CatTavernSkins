@@ -25,20 +25,20 @@ router.get('/skins', async (req: Request, res: Response) => {
     }
 
     // 通用查询（SQLite + PostgreSQL 兼容）
-    // 先查总数（仅已审核通过的）
+    // 先查总数（仅已审核通过且公开的；私密皮肤即使审核通过也不进公开库）
     const countResult = await DB.query(
-      "SELECT COUNT(*) as total FROM skins WHERE approval_status = $1",
+      "SELECT COUNT(*) as total FROM skins WHERE approval_status = $1 AND is_public = TRUE",
       ['approved']
     );
     const total = countResult.rows[0]?.total || 0;
 
-    // 查询列表（仅已审核通过的，包含上传者信息）
+    // 查询列表（仅已审核通过且公开的，包含上传者信息）
     const result = await DB.query(
       `SELECT s.*, u.user_uid, u.email as uploader_email,
               (SELECT p.name FROM profiles p WHERE p.user_id = s.user_id LIMIT 1) as uploader_name
        FROM skins s
        LEFT JOIN users u ON s.user_id = u.id
-       WHERE s.approval_status = 'approved'
+       WHERE s.approval_status = 'approved' AND s.is_public = TRUE
        ORDER BY s.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limitNum, offset]
@@ -96,6 +96,12 @@ router.get('/skins/:id', async (req: Request, res: Response) => {
     // 检查是否已审核通过
     if (skin.approval_status !== 'approved') {
       return res.status(404).json({ error: 'NotFound', errorMessage: '该皮肤暂未通过审核' });
+    }
+
+    // 私密皮肤（即使审核通过）不在公开库暴露：不返回元数据/file_path。
+    // 公开库为匿名接口，私密皮肤一律按「不存在」处理（所有者请通过 /api/skins 查看自己的）。
+    if (!skin.is_public) {
+      return res.status(404).json({ error: 'NotFound', errorMessage: '皮肤不存在' });
     }
 
     skin.file_path = skin.file_path?.replace(/^\.\//, '/');
@@ -176,6 +182,11 @@ router.get('/capes/:id', async (req: Request, res: Response) => {
     // 检查是否已审核通过
     if (cape.approval_status !== 'approved') {
       return res.status(404).json({ error: 'NotFound', errorMessage: '该披风暂未通过审核' });
+    }
+
+    // 私密披风（即使审核通过）不在公开库暴露。
+    if (!cape.is_public) {
+      return res.status(404).json({ error: 'NotFound', errorMessage: '披风不存在' });
     }
 
     // 增加浏览计数（仅已审核通过的）

@@ -20,10 +20,22 @@ export const AUTH_COOKIE_NAME = 'auth_token';
 const AUTH_COOKIE_MAX_AGE = 15 * 24 * 60 * 60 * 1000;
 
 export function getAuthCookieOptions() {
+  // 跨站部署（EdgeOne Pages 等，前端独立域名）支持：
+  // 跨站场景下浏览器要求 Cookie 必须 `SameSite=None; Secure` 才会随跨站 XHR 携带。
+  // 通过 COOKIE_SAMESITE / COOKIE_SECURE 环境变量配置。
+  // **默认零影响**：未设置时维持原行为 SameSite=Lax、secure 仅在生产开启（同源部署）。
+  const sameSiteEnv = (process.env.COOKIE_SAMESITE || '').toLowerCase();
+  const sameSite = (sameSiteEnv === 'none' || sameSiteEnv === 'strict' || sameSiteEnv === 'lax')
+    ? sameSiteEnv as 'none' | 'strict' | 'lax'
+    : 'lax';
+  // SameSite=None 必须搭配 Secure，否则浏览器拒收；此处强制保证其一致性。
+  const secure = process.env.COOKIE_SECURE === 'true'
+    || sameSite === 'none'
+    || process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
-    sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    sameSite,
+    secure,
     path: '/',
     maxAge: AUTH_COOKIE_MAX_AGE,
   };

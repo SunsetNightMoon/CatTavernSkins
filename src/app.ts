@@ -37,10 +37,27 @@ const app: Express = express();
 app.set('trust proxy', 1);
 
 // CORS配置（必须在 helmet 之前，以便 helmet 看到正确的 CORS 配置）
+//
+// 跨站部署（EdgeOne Pages 等，前端独立域名）支持：通过 CORS_ORIGINS 配置允许的来源
+// （逗号分隔多个域名）。**默认零影响**：未设置 CORS_ORIGINS 时，沿用原行为——
+// 生产锁定 BASE_URL（同源部署），开发放开。仅跨站部署才需要设置 CORS_ORIGINS。
+const corsOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+let corsOrigin: cors.CorsOptions['origin'];
+if (corsOrigins.length > 0) {
+  // 显式白名单：精确匹配来源，未命中则不带 CORS 头（浏览器拦截跨站请求）。
+  corsOrigin = corsOrigins;
+} else if (process.env.NODE_ENV === 'production') {
+  corsOrigin = process.env.BASE_URL;
+} else {
+  corsOrigin = true;
+}
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? process.env.BASE_URL
-    : true,
+  origin: corsOrigin,
   credentials: true,
 }));
 

@@ -284,13 +284,13 @@ java -jar -javaagent:authlib-injector.jar=https://skin.example.com \
 - [x] S3 / MinIO 对象存储
 - [x] Swagger API 文档（`ENABLE_SWAGGER=true` 时启用）
 - [x] 单元测试
-- [ ] 前端托管到 EdgeOne Pages（静态托管，与后端 API 分离部署）
-  - [ ] 前端 API 基址改为构建时注入（`VITE_API_BASE`），默认空值保持本地相对路径 `/api` 不变
-  - [ ] 跨站后端需配套：CORS 白名单加入 EdgeOne 域名（`credentials: true`）
-  - [ ] 跨站后端需配套：鉴权 Cookie 由 `SameSite=Lax` 改为 `SameSite=None; Secure`（强制 HTTPS），否则跨站登录态失效
-  - [ ] 评估 `SameSite=None` 带来的 CSRF 权衡（登录/上传已有额外校验）
-  - [ ] EdgeOne 构建配置：根目录 `frontend`、构建命令 `npm run build`、输出目录 `frontend/dist`
-  - [ ] 新增部署文档 `deploy/edgeone-pages.md`
+- [x] 前端托管到 EdgeOne Pages（静态托管，与后端 API 分离部署，见 `deploy/edgeone-pages.md`）
+  - [x] 前端 API 基址改为构建时注入（`VITE_API_BASE`），默认空值保持本地相对路径 `/api` 不变
+  - [x] 跨站后端需配套：CORS 白名单加入 EdgeOne 域名（`CORS_ORIGINS`，`credentials: true`）
+  - [x] 跨站后端需配套：鉴权 Cookie 由 `SameSite=Lax` 改为 `SameSite=None; Secure`（`COOKIE_SAMESITE`/`COOKIE_SECURE`，强制 HTTPS），否则跨站登录态失效
+  - [x] 评估 `SameSite=None` 带来的 CSRF 权衡（登录/上传已有额外校验，见部署文档）
+  - [x] EdgeOne 构建配置：根目录 `frontend`、构建命令 `npm run build`、输出目录 `frontend/dist`
+  - [x] 新增部署文档 `deploy/edgeone-pages.md`
 
 ---
 

@@ -162,10 +162,13 @@ export class SkinModel {
     rejectionReason?: string
   ): Promise<void> {
     if (status === 'approved') {
+      // 审核通过：is_public/is_downloadable 必须遵从所有者设置的 permission_level，
+      // 不能无条件置 TRUE，否则会把「私密」皮肤强制公开（隐私泄露）。
       await DB.query(
         `UPDATE skins
          SET approval_status = $1,
-             is_public = TRUE,
+             is_public = CASE WHEN permission_level = 'private' THEN FALSE ELSE TRUE END,
+             is_downloadable = CASE WHEN permission_level = 'public_downloadable' THEN TRUE ELSE FALSE END,
              approved_by = $2,
              approved_at = CURRENT_TIMESTAMP,
              rejected_by = NULL,
