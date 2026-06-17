@@ -406,6 +406,48 @@
   box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
 }
 
+/* AutoComplete (邮箱) 在浅色模式下的覆盖：
+   AutoComplete 渲染为 .ant-select 而非 .ant-input，上面的 .ant-input 覆盖不生效，
+   导致内层 input 沿用深色模式的白字 + 白底，浅色下白底白字不可辨认。 */
+[data-theme="light"] .auth-card .ant-select-selector {
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="light"] .auth-card .ant-select-selection-search-input,
+[data-theme="light"] .auth-card .ant-select-selection-item,
+[data-theme="light"] .auth-card .ant-select-selection-placeholder {
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+[data-theme="light"] .auth-card .ant-select-selection-placeholder {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme="light"] .auth-card .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: #4096ff !important;
+}
+
+[data-theme="light"] .auth-card .ant-select-focused .ant-select-selector {
+  border-color: #4096ff !important;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
+}
+
+/* 邮箱补全下拉项在浅色模式下的可读性 */
+[data-theme="light"] .ant-select-dropdown {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .ant-select-dropdown .ant-select-item-option-content,
+[data-theme="light"] .ant-select-dropdown .ant-select-item {
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+[data-theme="light"] .ant-select-dropdown .ant-select-item-option-active {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
 /* Auth page footer */
 .auth-page__footer {
   position: relative;
@@ -603,4 +645,55 @@
 [data-theme="light"] .oauth-btn--microsoft:hover {
   border-color: #00a4ef !important;
   color: #00a4ef !important;
+}
+
+/* ============================================================
+   邮箱 AutoComplete placeholder 颜色（深色 / 浅色）
+   AntD 的 .ant-select 占位符是独立的 span，且其原生 input 也有 ::placeholder，
+   两者都需覆盖，否则深色模式下沿用默认近黑色不可见。
+   ============================================================ */
+/* 深色模式（默认）：浅色占位符 */
+.auth-card .ant-select-selection-placeholder,
+.auth-card .ant-select-selection-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* 浅色模式：浅灰占位符 */
+[data-theme="light"] .auth-card .ant-select-selection-placeholder,
+[data-theme="light"] .auth-card .ant-select-selection-search-input::placeholder {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ============================================================
+   "同意用户协议与隐私政策" 勾选框文字 + 链接（深色 / 浅色）
+   ============================================================ */
+/* 深色模式（默认）：浅色文字 */
+.auth-card .auth-agreement,
+.auth-card .auth-agreement span {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-card .auth-agreement__link {
+  color: #4a9eff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-card .auth-agreement__link:hover {
+  color: #60b5ff;
+  text-decoration: underline;
+}
+
+/* 浅色模式：深色文字 */
+[data-theme="light"] .auth-card .auth-agreement,
+[data-theme="light"] .auth-card .auth-agreement span {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="light"] .auth-card .auth-agreement__link {
+  color: #2563eb;
+}
+
+[data-theme="light"] .auth-card .auth-agreement__link:hover {
+  color: #1d4ed8;
 }

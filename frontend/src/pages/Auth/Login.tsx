@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message, AutoComplete, Divider, Dropdown } from 'antd'
+import { Form, Input, Button, message, AutoComplete, Divider, Checkbox, Dropdown } from 'antd'
 import { GlobalOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import type { SelectProps } from 'antd'
@@ -53,6 +53,18 @@ export function Login() {
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('')
   const [oauthProviders, setOauthProviders] = useState<{ github: boolean; microsoft: boolean }>({ github: false, microsoft: false })
 
+  const loadCaptcha = async () => {
+    try {
+      const sessionId = Math.random().toString(36).substring(2, 15)
+      const response = await fetch(`/api/captcha/generate?sessionId=${sessionId}`)
+      const data = await response.json()
+      setCaptchaSessionId(sessionId)
+      setCaptchaQuestion(data.question)
+    } catch (error) {
+      console.error('加载验证码失败:', error)
+    }
+  }
+
   const handleEmailSearch = (value: string) => {
     if (!value || value.includes('@')) {
       setEmailOptions([])
@@ -64,18 +76,6 @@ export function Login() {
   const handleEmailSelect = (value: string) => {
     form.setFieldValue('email', value)
     setEmailOptions([])
-  }
-
-  const loadCaptcha = async () => {
-    try {
-      const sessionId = Math.random().toString(36).substring(2, 15)
-      const response = await fetch(`/api/captcha/generate?sessionId=${sessionId}`)
-      const data = await response.json()
-      setCaptchaSessionId(sessionId)
-      setCaptchaQuestion(data.question)
-    } catch (error) {
-      console.error('加载验证码失败:', error)
-    }
   }
 
   useEffect(() => {
@@ -91,6 +91,7 @@ export function Login() {
           loadCaptcha()
         }
       } catch {
+        // keep default 'math'
         loadCaptcha()
       }
     }
@@ -127,7 +128,7 @@ export function Login() {
 
       if (captchaType === 'turnstile' && turnstileToken) {
         loginData.turnstile_token = turnstileToken
-      } else {
+      } else if (captchaType === 'math') {
         loginData.captcha_session_id = captchaSessionId
         loginData.captcha_answer = values.captcha_answer
       }
@@ -141,11 +142,28 @@ export function Login() {
       message.success(t('auth.loginSuccess'))
       navigate('/')
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || t('auth.loginFailed'))
-      if (captchaType === 'math') {
-        loadCaptcha()
-      } else {
+      const errMsg = error.response?.data?.errorMessage || t('auth.loginFailed')
+      // 不刷新表单/验证码，仅高亮出错的字段
+      if (/验证码/.test(errMsg)) {
+        // 验证码错误：高亮答案框，并刷新一道新题（旧题已被服务端消费，无法复用）
+        if (captchaType === 'math') {
+          form.setFields([{ name: 'captcha_answer', value: '', errors: [errMsg] }])
+          loadCaptcha()
+        } else {
+          setTurnstileToken('')
+          message.error(errMsg)
+        }
+      } else if (/人机验证/.test(errMsg)) {
         setTurnstileToken('')
+        message.error(errMsg)
+      } else if (/邮箱|用户名|密码/.test(errMsg)) {
+        // 账号或密码错误：高亮邮箱与密码框，保留已填内容
+        form.setFields([
+          { name: 'email', errors: [' '] },
+          { name: 'password', errors: [errMsg] },
+        ])
+      } else {
+        message.error(errMsg)
       }
     } finally {
       setLoading(false)
@@ -294,6 +312,25 @@ export function Login() {
                 </Form.Item>
               </>
             )}
+
+            <Form.Item
+              name="agreement"
+              valuePropName="checked"
+              rules={[
+                {
+                  validator: (_, value) =>
+                    value ? Promise.resolve() : Promise.reject(new Error('请先阅读并同意用户协议与隐私政策')),
+                },
+              ]}
+              style={{ marginBottom: 12 }}
+            >
+              <Checkbox className="auth-agreement">
+                我已阅读并同意
+                <Link to="/terms" target="_blank" className="auth-agreement__link">《用户协议》</Link>
+                与
+                <Link to="/privacy" target="_blank" className="auth-agreement__link">《隐私政策》</Link>
+              </Checkbox>
+            </Form.Item>
 
             <Form.Item style={{ marginBottom: 16 }}>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">

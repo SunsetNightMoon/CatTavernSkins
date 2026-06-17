@@ -7,6 +7,9 @@ interface CaptchaEntry {
 
 const captchaStore = new Map<string, CaptchaEntry>();
 
+// 内存中验证码条目的硬上限，防止两次定时清理之间内存被打爆 (M3b)
+const CAPTCHA_STORE_MAX_SIZE = 10000;
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of captchaStore.entries()) {
@@ -15,6 +18,32 @@ setInterval(() => {
     }
   }
 }, 3600000);
+
+/**
+ * 在插入新条目前执行容量控制：先清理已过期条目，
+ * 若仍超过上限则按插入顺序淘汰最旧的条目 (M3b)
+ */
+function enforceCaptchaStoreCap(): void {
+  if (captchaStore.size < CAPTCHA_STORE_MAX_SIZE) {
+    return;
+  }
+
+  const now = Date.now();
+  for (const [key, entry] of captchaStore.entries()) {
+    if (entry.expiresAt < now) {
+      captchaStore.delete(key);
+    }
+  }
+
+  // 仍然超限时，淘汰最旧的条目（Map 保持插入顺序）
+  while (captchaStore.size >= CAPTCHA_STORE_MAX_SIZE) {
+    const oldestKey = captchaStore.keys().next().value;
+    if (oldestKey === undefined) {
+      break;
+    }
+    captchaStore.delete(oldestKey);
+  }
+}
 
 export class CaptchaService {
   static isTurnstileEnabled(): boolean {
@@ -49,6 +78,9 @@ export class CaptchaService {
         question = `${num1} + ${num2} = ?`;
         answer = num1 + num2;
     }
+
+    // 插入前执行容量控制，避免内存无限增长 (M3b)
+    enforceCaptchaStoreCap();
 
     // 存储到内存（TTL 5分钟）
     captchaStore.set(sessionId, {

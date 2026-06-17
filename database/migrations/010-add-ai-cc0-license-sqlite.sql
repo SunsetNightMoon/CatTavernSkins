@@ -51,7 +51,7 @@ INSERT OR IGNORE INTO skins_new (
 ) SELECT
   id, user_id, profile_id, file_path, model_type, file_hash, file_size,
   width, height, name, description,
-  COALESCE(license_type, 'ARR'),
+  CASE WHEN license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'AI_CC0', 'Custom') THEN license_type ELSE 'ARR' END,
   permission_level, is_public, is_downloadable, approval_status,
   approved_by, approved_at, rejected_by, rejection_reason,
   download_count, view_count, created_at,
@@ -129,7 +129,7 @@ INSERT OR IGNORE INTO capes_new (
 ) SELECT
   id, user_id, file_path, file_hash, file_size,
   width, height, name, description,
-  COALESCE(license_type, 'ARR'),
+  CASE WHEN license_type IN ('CC0_1.0', 'CC_BY_3.0', 'CC_BY_4.0', 'CC_BY-SA_3.0', 'CC_BY-SA_4.0', 'CC_BY-NC_3.0', 'CC_BY-NC_4.0', 'ARR', 'AI_CC0', 'Custom') THEN license_type ELSE 'ARR' END,
   permission_level, is_public, is_downloadable, approval_status,
   approved_by, approved_at, rejected_by, rejection_reason,
   download_count, view_count, created_at,

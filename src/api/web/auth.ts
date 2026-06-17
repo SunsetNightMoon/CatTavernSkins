@@ -13,6 +13,34 @@ import { StorageService } from '../../services/StorageService';
 
 const router = Router();
 
+// ─── auth_token Cookie 配置（修复 H1：令牌改由 httpOnly Cookie 承载，杜绝 XSS 窃取）──
+// 名称、属性与 oauth.ts 共享，确保桥接中间件 (app.ts) 能统一识别。
+export const AUTH_COOKIE_NAME = 'auth_token';
+// 与令牌 15 天生命周期一致（15*24*60*60*1000 ms）。
+const AUTH_COOKIE_MAX_AGE = 15 * 24 * 60 * 60 * 1000;
+
+export function getAuthCookieOptions() {
+  // 跨站部署（EdgeOne Pages 等，前端独立域名）支持：
+  // 跨站场景下浏览器要求 Cookie 必须 `SameSite=None; Secure` 才会随跨站 XHR 携带。
+  // 通过 COOKIE_SAMESITE / COOKIE_SECURE 环境变量配置。
+  // **默认零影响**：未设置时维持原行为 SameSite=Lax、secure 仅在生产开启（同源部署）。
+  const sameSiteEnv = (process.env.COOKIE_SAMESITE || '').toLowerCase();
+  const sameSite = (sameSiteEnv === 'none' || sameSiteEnv === 'strict' || sameSiteEnv === 'lax')
+    ? sameSiteEnv as 'none' | 'strict' | 'lax'
+    : 'lax';
+  // SameSite=None 必须搭配 Secure，否则浏览器拒收；此处强制保证其一致性。
+  const secure = process.env.COOKIE_SECURE === 'true'
+    || sameSite === 'none'
+    || process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    sameSite,
+    secure,
+    path: '/',
+    maxAge: AUTH_COOKIE_MAX_AGE,
+  };
+}
+
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
@@ -262,11 +290,13 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
 router.post('/login', authLimiter, async (req: Request, res: Response) => {
   try {
     const { email, password, turnstile_token, captcha_session_id, captcha_answer } = req.body;
+    // 登录标识符：兼容旧字段名 email，实际支持「邮箱或用户名（角色名）」
+    const identifier = (req.body.identifier ?? email ?? req.body.username) as string | undefined;
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({
         error: 'BadRequest',
-        errorMessage: '邮箱和密码不能为空',
+        errorMessage: '邮箱/用户名和密码不能为空',
       });
     }
 
@@ -372,6 +402,10 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
     // 获取第一个角色名用于前端快捷显示
     const primaryProfile = profiles[0];
     const profileName = primaryProfile?.name || null;
+
+    // 同时通过 httpOnly Cookie 下发令牌（修复 H1）。仍在 JSON body 中返回令牌，
+    // 保持对现有集成测试 / API 客户端 / Bearer 头的完全向后兼容。
+    res.cookie(AUTH_COOKIE_NAME, token.access_token, getAuthCookieOptions());
 
     res.json({
       message: '登录成功',
@@ -929,6 +963,9 @@ router.post('/delete-account', authLimiter, async (req: Request, res: Response) 
 
     // 6. 删除用户
     await DB.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    // 令牌已删除，清除 httpOnly Cookie（修复 H1：避免失效令牌残留在浏览器）。
+    res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
 
     res.json({ message: '账号已注销' });
   } catch (error: any) {

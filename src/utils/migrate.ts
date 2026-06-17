@@ -6,97 +6,112 @@ import * as fs from 'fs';
  * - 通用文件（不含 -sqlite / -postgres 后缀）始终包含
  * - 特定文件仅匹配当前 dbType 后缀
  */
+/**
+ * 安全地执行“重建表”型迁移（SQLite 改 CHECK 约束必须重建表）。
+ *
+ * 修复的历史问题（详见仓库 Dev/master 合并记录）：
+ *  1. 旧实现用 `stmt.trim().startsWith('INSERT')` 分类，但 SQL 里 INSERT 前有 `--` 注释，
+ *     导致分类失败、在新表创建前被当作“其他语句”执行 → 静默失败 → 新表为空 →
+ *     行数校验拒绝替换 → CHECK 约束永远加不上（数据虽不丢，但迁移目的从未达成）。
+ *     现在：分类前先剥离前导注释。
+ *  2. 非事务化：CREATE/INSERT/DROP/RENAME 分步裸跑，中途崩溃可能丢表。
+ *     现在：整体包在一个事务里，任何错误都 ROLLBACK，绝不留半成品。
+ *  3. 每次启动都重建表，浪费且有风险。
+ *     现在：幂等守卫——基表的 license_type CHECK 已是期望值则直接跳过。
+ *  4. 残留的空 *_new 孤儿表会污染重建。
+ *     现在：重建前先 DROP IF EXISTS 清干净。
+ *  5. 行数校验过宽（仅判断“非空”）。
+ *     现在：新表行数 < 旧表 → 视为丢数据 → 回滚。
+ */
 async function runSafeRebuildMigration(db: any, statements: string[], file: string): Promise<void> {
   console.log(`  [安全模式] 处理迁移文件: ${file}`);
-  console.log(`  [安全模式] 检测到重建表迁移，将验证数据完整性...`);
 
-  // 分类 SQL 语句
+  // 剥离一条语句块的前导 `--` 注释/空行，得到首个有效 SQL，用于稳健分类。
+  const stripComments = (stmt: string): string =>
+    stmt.split(/\r?\n/).filter(l => {
+      const t = l.trim();
+      return t !== '' && !t.startsWith('--');
+    }).join('\n').trim();
+
+  // 提取 license_type CHECK 的允许值集合（去空格/引号），用于幂等比较。无该 CHECK 返回 null。
+  const licenseAllowed = (sql: string): string | null => {
+    const m = sql.match(/CHECK\s*\(\s*license_type\s+IN\s*\(([^)]*)\)/i);
+    return m ? m[1].replace(/[\s']/g, '') : null;
+  };
+
+  // 仅挑 CREATE TABLE / INSERT（注释剥离后判断）。PRAGMA/SELECT/DROP/ALTER 一律忽略——
+  // 外键开关与删表改名改由本函数统一、事务化地控制。
   const createStmts: string[] = [];
   const insertStmts: string[] = [];
-  let dropAndRename: { drop: string; rename: string }[] = [];
+  for (const raw of statements) {
+    const eff = stripComments(raw);
+    if (!eff) continue;
+    const u = eff.toUpperCase();
+    if (u.startsWith('CREATE TABLE')) createStmts.push(eff);
+    else if (u.startsWith('INSERT')) insertStmts.push(eff);
+  }
 
-  for (const stmt of statements) {
-    const trimmed = stmt.trim().toUpperCase();
-    if (trimmed.startsWith('CREATE TABLE IF NOT EXISTS')) {
-      createStmts.push(stmt);
-    } else if (trimmed.startsWith('INSERT')) {
-      insertStmts.push(stmt);
-    } else if (trimmed.startsWith('DROP TABLE')) {
-      if (!dropAndRename) dropAndRename = [];
-      dropAndRename.push({ drop: stmt, rename: '' });
-    } else if (trimmed.startsWith('ALTER TABLE') && trimmed.includes('RENAME')) {
-      if (dropAndRename.length > 0) {
-        dropAndRename[dropAndRename.length - 1].rename = stmt;
+  // 从 CREATE 语句解析重建目标：xxx_new -> 基表 xxx。
+  const targets: { tmp: string; base: string; createSql: string }[] = [];
+  for (const c of createStmts) {
+    const m = c.match(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([A-Za-z0-9_]+)/i);
+    if (m && m[1].endsWith('_new')) {
+      targets.push({ tmp: m[1], base: m[1].slice(0, -4), createSql: c });
+    }
+  }
+  if (targets.length === 0) {
+    console.log(`  [安全模式] 未发现 *_new 重建目标，跳过: ${file}`);
+    return;
+  }
+
+  // 幂等守卫：所有基表的 license_type CHECK 都已与目标一致 → 此前已成功应用，跳过。
+  let allApplied = true;
+  for (const t of targets) {
+    const baseRow = await db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", [t.base]);
+    const want = licenseAllowed(t.createSql);
+    if (!baseRow || !want || licenseAllowed(baseRow.sql) !== want) { allApplied = false; break; }
+  }
+  if (allApplied) {
+    console.log(`  [安全模式] 目标表 CHECK 约束已是最新，跳过: ${file}`);
+    return;
+  }
+
+  console.log(`  [安全模式] 检测到重建表迁移，开始事务化重建并校验数据完整性...`);
+
+  // 外键开关必须在事务外设置（事务内 PRAGMA foreign_keys 为 no-op）。
+  await db.run('PRAGMA foreign_keys = OFF');
+  await db.run('BEGIN IMMEDIATE');
+  try {
+    // 0. 清理残留的孤儿 *_new 表，确保从干净状态重建。
+    for (const t of targets) await db.run(`DROP TABLE IF EXISTS ${t.tmp}`);
+    // 1. 建新表（含新 CHECK 约束）。
+    for (const c of createStmts) await db.run(c);
+    // 2. 拷数据（SQL 显式列名 + 非法 license 归一到 ARR，保证不丢列、不违反 CHECK）。
+    for (const ins of insertStmts) await db.run(ins);
+    // 3. 逐表校验并替换。
+    for (const t of targets) {
+      const baseExists = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [t.base]);
+      if (!baseExists) {
+        await db.run(`ALTER TABLE ${t.tmp} RENAME TO ${t.base}`);
+        console.log(`  ${t.base}: 基表不存在，直接启用新表`);
+        continue;
       }
-    } else {
-      // 其他语句（PRAGMA 等）直接执行
-      try { await db.run(stmt); } catch (e: any) { /* 忽略已存在错误 */ }
+      const oldCount = (await db.get(`SELECT COUNT(*) AS c FROM ${t.base}`)).c;
+      const newCount = (await db.get(`SELECT COUNT(*) AS c FROM ${t.tmp}`)).c;
+      if (newCount < oldCount) {
+        throw new Error(`${t.base} 行数校验失败：旧 ${oldCount} -> 新 ${newCount}，疑似丢数据`);
+      }
+      await db.run(`DROP TABLE ${t.base}`);
+      await db.run(`ALTER TABLE ${t.tmp} RENAME TO ${t.base}`);
+      console.log(`  ✅ ${t.base}: 校验通过（${oldCount} 行），已替换`);
     }
-  }
-
-  // 1. 创建新表
-  for (const stmt of createStmts) {
-    try { await db.run(stmt); } catch (e: any) {
-      console.log(`  创建新表: ${stmt.substring(0, 60)}...`);
-    }
-  }
-
-  // 2. 插入数据
-  for (const stmt of insertStmts) {
-    try { await db.run(stmt); } catch (e: any) {
-      console.error(`  插入数据失败: ${e.message}`);
-    }
-  }
-
-  // 3. 验证数据完整性并决定是否替换
-  const tables = ['skins', 'capes'];
-  let allVerified = true;
-
-  for (const table of tables) {
-    const newTable = table + '_new';
-    // 检查新表是否存在
-    const newTableExists = await db.get(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-      [newTable]
-    );
-
-    if (!newTableExists) continue;
-
-    // 检查旧表是否存在
-    const oldTableExists = await db.get(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-      [table]
-    );
-
-    if (!oldTableExists) {
-      // 旧表不存在，直接重命名
-      console.log(`  ${table}: 旧表不存在，直接重命名`);
-      await db.run(`DROP TABLE IF EXISTS ${newTable}`);
-      await db.run(`ALTER TABLE ${newTable} RENAME TO ${table}`);
-      continue;
-    }
-
-    // 比较行数
-    const oldCount = await db.get(`SELECT COUNT(*) as cnt FROM ${table}`);
-    const newCount = await db.get(`SELECT COUNT(*) as cnt FROM ${newTable}`);
-
-    console.log(`  ${table}: 旧表 ${oldCount.cnt} 行, 新表 ${newCount.cnt} 行`);
-
-    if (oldCount.cnt > 0 && newCount.cnt === 0) {
-      // 旧表有数据，但新表是空的 -> 插入失败，不替换
-      console.error(`  ❌ ${table}: 数据迁移失败！保留原表，不执行替换`);
-      allVerified = false;
-    } else if (newCount.cnt >= oldCount.cnt) {
-      // 新表数据完整，执行替换
-      console.log(`  ✅ ${table}: 数据验证通过，执行替换...`);
-      await db.run(`DROP TABLE ${table}`);
-      await db.run(`ALTER TABLE ${newTable} RENAME TO ${table}`);
-    }
-  }
-
-  if (!allVerified) {
-    console.error(`[migrate] ❌ ${file} 数据验证失败，已保留原表。请检查迁移文件！`);
-    // 不抛出错误，让服务器继续启动（原表还在）
+    await db.run('COMMIT');
+    console.log(`  [安全模式] ${file} 重建完成`);
+  } catch (err: any) {
+    try { await db.run('ROLLBACK'); } catch { /* ignore */ }
+    console.error(`  ❌ ${file} 重建失败，已回滚，原表数据保持不变: ${err?.message ?? err}`);
+  } finally {
+    await db.run('PRAGMA foreign_keys = ON');
   }
 }
 

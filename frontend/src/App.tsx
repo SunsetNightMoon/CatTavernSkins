@@ -9,6 +9,9 @@ import SetupWizard from './pages/Setup/SetupWizard'
 import { Login } from './pages/Auth/Login'
 import { Register } from './pages/Auth/Register'
 import { OAuthCallback } from './pages/Auth/OAuthCallback'
+import { Terms } from './pages/Legal/Terms'
+import { Privacy } from './pages/Legal/Privacy'
+import { OAuthConflict } from './pages/Auth/OAuthConflict'
 import { Landing } from './pages/Landing/Landing'
 import { SkinLibrary } from './pages/Library/SkinLibrary'
 import { SkinDetail } from './pages/SkinDetail/SkinDetail'
@@ -102,6 +105,11 @@ function App() {
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
       <Route path="/oauth-success" element={<OAuthCallback />} />
+      <Route path="/oauth-conflict" element={<OAuthConflict />} />
+
+      {/* 法律文档（公开） */}
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
 
       {/* 带布局的路由 */}
       <Route element={<Layout />}>

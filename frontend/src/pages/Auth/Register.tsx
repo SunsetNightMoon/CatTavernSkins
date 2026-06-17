@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message, Alert, AutoComplete, Divider, Dropdown } from 'antd'
+import { Form, Input, Button, message, Alert, AutoComplete, Divider, Checkbox, Dropdown } from 'antd'
 import { GlobalOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import type { SelectProps } from 'antd'
@@ -142,11 +142,27 @@ export function Register() {
       }
       navigate('/login')
     } catch (error: any) {
-      message.error(error.response?.data?.errorMessage || t('auth.registerFailed'))
-      if (captchaType === 'math') {
-        loadCaptcha()
-      } else {
+      const errMsg = error.response?.data?.errorMessage || t('auth.registerFailed')
+      // 不整体刷新表单/验证码，仅高亮对应出错字段，保留已填内容
+      if (/验证码/.test(errMsg)) {
+        if (captchaType === 'math') {
+          form.setFields([{ name: 'captcha_answer', value: '', errors: [errMsg] }])
+          loadCaptcha()
+        } else {
+          setTurnstileToken('')
+          message.error(errMsg)
+        }
+      } else if (/人机验证/.test(errMsg)) {
         setTurnstileToken('')
+        message.error(errMsg)
+      } else if (/角色ID|角色名|游戏名/.test(errMsg)) {
+        form.setFields([{ name: 'profile_name', errors: [errMsg] }])
+      } else if (/邮箱/.test(errMsg)) {
+        form.setFields([{ name: 'email', errors: [errMsg] }])
+      } else if (/密码/.test(errMsg)) {
+        form.setFields([{ name: 'password', errors: [errMsg] }])
+      } else {
+        message.error(errMsg)
       }
     } finally {
       setLoading(false)
@@ -318,6 +334,25 @@ export function Register() {
                 </Form.Item>
               </>
             )}
+
+            <Form.Item
+              name="agreement"
+              valuePropName="checked"
+              rules={[
+                {
+                  validator: (_, value) =>
+                    value ? Promise.resolve() : Promise.reject(new Error('请先阅读并同意用户协议与隐私政策')),
+                },
+              ]}
+              style={{ marginBottom: 12 }}
+            >
+              <Checkbox className="auth-agreement">
+                我已阅读并同意
+                <Link to="/terms" target="_blank" className="auth-agreement__link">《用户协议》</Link>
+                与
+                <Link to="/privacy" target="_blank" className="auth-agreement__link">《隐私政策》</Link>
+              </Checkbox>
+            </Form.Item>
 
             <Form.Item style={{ marginBottom: 16 }}>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">

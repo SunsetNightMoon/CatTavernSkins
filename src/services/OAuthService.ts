@@ -5,6 +5,38 @@ import { ProfileModel } from '../models/Profile';
 import { generateUUID } from '../utils/uuid';
 import { randomBytes } from 'crypto';
 
+/**
+ * 第二账户创建载荷（用于邮箱冲突时“继续”创建一个全新的独立账户）。
+ */
+export interface CreateSecondAccountPayload {
+  provider: 'github' | 'microsoft';
+  providerAccountId: string;
+  email: string;
+  profileName: string | null;
+  accessToken?: string;
+  refreshToken?: string;
+  emailVerified: boolean;
+}
+
+/**
+ * handleCallback 返回的判别联合类型。
+ * - authenticated: OAuth 登录已确定（已存在的关联账户，或全新创建的账户）。
+ * - email_conflict: 该 OAuth 身份的邮箱与某个已存在账户冲突，需要用户决策。
+ *   此时尚未创建/关联任何账户，所有继续创建第二账户所需的信息都随结果返回。
+ */
+export type OAuthCallbackResult =
+  | { status: 'authenticated'; user: User; isNewUser: boolean }
+  | {
+      status: 'email_conflict';
+      provider: 'github' | 'microsoft';
+      providerAccountId: string;
+      email: string;
+      profileName: string | null;
+      accessToken: string;
+      refreshToken?: string;
+      emailVerified: boolean;
+    };
+
 export class OAuthService {
   static getAuthorizationUrl(provider: 'github' | 'microsoft', state: string): string {
     const config = getOAuthConfig();
@@ -43,7 +75,7 @@ export class OAuthService {
   static async handleCallback(
     provider: 'github' | 'microsoft',
     code: string
-  ): Promise<{ user: User; isNewUser: boolean; profile: any }> {
+  ): Promise<OAuthCallbackResult> {
     const config = getOAuthConfig();
     const providerConfig = config[provider];
 
@@ -61,58 +93,77 @@ export class OAuthService {
 
     const providerAccountId = String(profile.id);
 
-    let oauthAccount = await OAuthAccountModel.findByProvider(provider, providerAccountId);
-
+    // 1) 已存在的 OAuth 关联账户：直接登录，刷新令牌。
+    const oauthAccount = await OAuthAccountModel.findByProvider(provider, providerAccountId);
     if (oauthAccount) {
       await OAuthAccountModel.updateTokens(oauthAccount.id, accessToken, refreshToken);
       const user = await UserModel.findById(oauthAccount.user_id);
       if (!user) {
         throw new Error('Associated user not found');
       }
-      return { user, isNewUser: false, profile };
+      return { status: 'authenticated', user, isNewUser: false };
     }
 
     const email = this.extractEmail(provider, profile);
+    const emailVerified = this.isEmailVerified(provider, profile, email);
+    const profileName = this.extractProfileName(provider, profile);
 
+    // 2) 没有 OAuth 关联，但邮箱命中了某个已存在账户：返回冲突，交由用户决策。
+    //    重要：此处不创建、不关联任何账户（修复 C1 静默自动关联漏洞）。
     if (email) {
       const existingUser = await UserModel.findByEmail(email);
       if (existingUser) {
-        await OAuthAccountModel.create({
-          user_id: existingUser.id,
+        return {
+          status: 'email_conflict',
           provider,
-          provider_account_id: providerAccountId,
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        return { user: existingUser, isNewUser: false, profile };
+          providerAccountId,
+          email,
+          profileName,
+          accessToken,
+          refreshToken,
+          emailVerified,
+        };
       }
     }
 
-    const randomPassword = randomBytes(32).toString('base64');
-    const newUser = await UserModel.create({
-      email: email || `oauth_${provider}_${providerAccountId}@placeholder.local`,
-      password: randomPassword,
-      email_verified: email ? 1 : 0,
-    });
-
-    await OAuthAccountModel.create({
-      user_id: newUser.id,
+    // 3) 既无 OAuth 关联也无邮箱冲突：创建全新账户。
+    const newUser = await this.createUserWithAccount({
       provider,
-      provider_account_id: providerAccountId,
-      access_token: accessToken,
-      refresh_token: refreshToken,
+      providerAccountId,
+      email: email || `oauth_${provider}_${providerAccountId}@placeholder.local`,
+      emailVerified: !!(email && emailVerified),
+      profileName,
+      accessToken,
+      refreshToken,
     });
 
-    const profileName = this.extractProfileName(provider, profile);
-    const sanitizedName = this.sanitizeProfileName(profileName);
-    const finalName = await this.ensureUniqueProfileName(sanitizedName);
+    return { status: 'authenticated', user: newUser, isNewUser: true };
+  }
 
-    await ProfileModel.create({
-      name: finalName,
-      userId: newUser.id,
+  /**
+   * 邮箱冲突场景下的“继续”动作：创建一个全新的、独立的账户。
+   * 由于 users.email 具有 UNIQUE 约束且该邮箱已属于另一账户，必须使用占位邮箱
+   * 来避免唯一约束冲突。占位邮箱永远视为未验证（email_verified = 0）。
+   */
+  static async createSecondAccount(payload: CreateSecondAccountPayload): Promise<User> {
+    // 竞态保护：若期间该 OAuth 身份已被创建关联，直接返回已存在的用户。
+    const existing = await OAuthAccountModel.findByProvider(payload.provider, payload.providerAccountId);
+    if (existing) {
+      const linkedUser = await UserModel.findById(existing.user_id);
+      if (linkedUser) return linkedUser;
+    }
+
+    const placeholderEmail = `oauth_${payload.provider}_${payload.providerAccountId}@placeholder.local`;
+
+    return this.createUserWithAccount({
+      provider: payload.provider,
+      providerAccountId: payload.providerAccountId,
+      email: placeholderEmail,
+      emailVerified: false, // 占位邮箱永远不视为已验证
+      profileName: payload.profileName,
+      accessToken: payload.accessToken,
+      refreshToken: payload.refreshToken,
     });
-
-    return { user: newUser, isNewUser: true, profile };
   }
 
   static async getAvailableProviders(): Promise<{ github: boolean; microsoft: boolean }> {
@@ -121,6 +172,58 @@ export class OAuthService {
       github: config.github.isConfigured,
       microsoft: config.microsoft.isConfigured,
     };
+  }
+
+  /**
+   * 创建用户 + OAuth 关联 + 角色档案。
+   *
+   * 注意：当前数据库抽象层（DB.query）没有可供各 Model 复用的事务句柄
+   * （getConnection 返回的原始连接无法被静态 Model 调用使用），因此这里采用
+   * 务实的“顺序写入 + try/catch + 唯一冲突重查”的尽力而为方案，避免半成品状态。
+   */
+  private static async createUserWithAccount(payload: {
+    provider: 'github' | 'microsoft';
+    providerAccountId: string;
+    email: string;
+    emailVerified: boolean;
+    profileName: string | null;
+    accessToken?: string;
+    refreshToken?: string;
+  }): Promise<User> {
+    const randomPassword = randomBytes(32).toString('base64');
+    const newUser = await UserModel.create({
+      email: payload.email,
+      password: randomPassword,
+      email_verified: payload.emailVerified ? 1 : 0,
+    });
+
+    try {
+      await OAuthAccountModel.create({
+        user_id: newUser.id,
+        provider: payload.provider,
+        provider_account_id: payload.providerAccountId,
+        access_token: payload.accessToken,
+        refresh_token: payload.refreshToken,
+      });
+
+      const sanitizedName = this.sanitizeProfileName(payload.profileName);
+      const finalName = await this.ensureUniqueProfileName(sanitizedName);
+      await ProfileModel.create({
+        name: finalName,
+        userId: newUser.id,
+      });
+    } catch (err) {
+      // 尽力而为的恢复：若 OAuth 关联或档案创建因竞态/唯一冲突失败，
+      // 重查该 OAuth 身份是否已被并发请求创建关联；若是则复用，否则抛出原错误。
+      const existing = await OAuthAccountModel.findByProvider(payload.provider, payload.providerAccountId);
+      if (existing) {
+        const linkedUser = await UserModel.findById(existing.user_id);
+        if (linkedUser) return linkedUser;
+      }
+      throw err;
+    }
+
+    return newUser;
   }
 
   private static async exchangeCodeForToken(
@@ -191,16 +294,26 @@ export class OAuthService {
       throw new Error(`Failed to fetch user profile: ${text}`);
     }
 
-    let profile: any = await response.json();
+    const profile: any = await response.json();
 
-    if (provider === 'github' && !profile.email) {
-      profile.email = await this.fetchGitHubEmail(accessToken);
+    if (provider === 'github') {
+      // 始终通过 /user/emails 端点确认邮箱与验证状态。
+      // GitHub 的 /user 响应不会告知邮箱是否已验证，因此只信任 primary && verified 的地址。
+      const { email, verified } = await this.fetchGitHubEmail(accessToken);
+      profile.email = email; // 仅来自 primary && verified 的地址，否则为 null
+      profile.__emailVerified = verified;
     }
 
     return profile;
   }
 
-  private static async fetchGitHubEmail(accessToken: string): Promise<string | null> {
+  /**
+   * 获取 GitHub 主邮箱。
+   * 仅返回 primary && verified 的地址；不再回退到未验证的 emails[0]。
+   */
+  private static async fetchGitHubEmail(
+    accessToken: string
+  ): Promise<{ email: string | null; verified: boolean }> {
     try {
       const response = await fetch('https://api.github.com/user/emails', {
         headers: {
@@ -210,14 +323,45 @@ export class OAuthService {
         },
       });
 
-      if (!response.ok) return null;
+      if (!response.ok) return { email: null, verified: false };
 
       const emails = (await response.json()) as any[];
-      const primary = emails.find((e: any) => e.primary && e.verified);
-      return primary?.email || emails[0]?.email || null;
+      const primary = Array.isArray(emails)
+        ? emails.find((e: any) => e.primary && e.verified)
+        : undefined;
+
+      if (primary?.email) {
+        return { email: primary.email, verified: true };
+      }
+
+      return { email: null, verified: false };
     } catch {
-      return null;
+      return { email: null, verified: false };
     }
+  }
+
+  /**
+   * 判定从 profile 中提取的邮箱是否为已验证的、可信的邮箱。
+   * - github: 仅当邮箱来自 /user/emails 的 primary && verified 地址时才为 true。
+   * - microsoft: 仅 profile.mail 是可信的已验证邮箱；userPrincipalName 不算。
+   */
+  private static isEmailVerified(
+    provider: 'github' | 'microsoft',
+    profile: any,
+    email: string | null
+  ): boolean {
+    if (!email) return false;
+
+    if (provider === 'github') {
+      return profile.__emailVerified === true;
+    }
+
+    if (provider === 'microsoft') {
+      // 默认 common 租户下，仅信任 profile.mail；userPrincipalName 非已验证邮箱。
+      return !!profile.mail && email === profile.mail;
+    }
+
+    return false;
   }
 
   private static extractEmail(provider: 'github' | 'microsoft', profile: any): string | null {
